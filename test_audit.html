@@ -1,0 +1,3493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>EcoTrack - Real-Time Carbon & Mobility Ledger</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+    .font-cursive {
+      font-family: 'Caveat', cursive, sans-serif;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      min-height: 100dvh;
+      margin: 0;
+      padding: 0;
+      background: #F5F9F6;
+      color: #122B24;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      overflow-x: hidden;
+      box-sizing: border-box;
+    }
+
+    /* Universal Scrollbar Elimination for Clean Mobile Feel */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      -ms-overflow-style: none !important;
+      scrollbar-width: none !important;
+    }
+    *::-webkit-scrollbar {
+      display: none !important;
+      width: 0px !important;
+      height: 0px !important;
+    }
+
+    /* 100% Full-Bleed Mobile App Root - Zero Outer Borders, Frames, or Shadows */
+    .app-root {
+      width: 100%;
+      height: 100%;
+      min-height: 100dvh;
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #F5F9F6;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      box-sizing: border-box;
+      border: none !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+    }
+
+    #vehicleCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    #realLeafletMap {
+      width: 100%;
+      height: 100%;
+      border-radius: 20px;
+      z-index: 10;
+    }
+
+    @keyframes brand-pulse {
+      0% { transform: scale(0.95); opacity: 0.95; }
+      50% { transform: scale(1.25); opacity: 0.35; }
+      100% { transform: scale(0.95); opacity: 0.95; }
+    }
+    .brand-pulse {
+      animation: brand-pulse 2s infinite ease-in-out;
+    }
+
+    .brand-card {
+      background: #ffffff;
+      border: 1px solid #DCECE1;
+      border-radius: 22px;
+      box-shadow: 0 6px 20px -6px rgba(2, 73, 62, 0.05);
+    }
+
+    .mode-sheet {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 1200;
+      display: none;
+      align-items: flex-end;
+    }
+    .mode-sheet.open {
+      display: flex;
+    }
+    .sheet-card {
+      background: #FFFFFF;
+      width: 100%;
+      border-radius: 32px 32px 0 0;
+      padding: 22px 18px 28px;
+      box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
+      animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    /* Ambient Floating Gradient Orbs */
+    @keyframes floatOrb1 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(30px, -35px) scale(1.15); }
+    }
+    @keyframes floatOrb2 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(-35px, 25px) scale(0.9); }
+    }
+    @keyframes floatOrb3 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(25px, 30px) scale(1.1); }
+    }
+    .orb-1 { animation: floatOrb1 8s ease-in-out infinite; }
+    .orb-2 { animation: floatOrb2 10s ease-in-out infinite; }
+    .orb-3 { animation: floatOrb3 12s ease-in-out infinite; }
+
+    @keyframes spinSlow {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    @keyframes spinSlowReverse {
+      from { transform: rotate(360deg); }
+      to { transform: rotate(0deg); }
+    }
+    .spin-slow { animation: spinSlow 14s linear infinite; }
+    .spin-slow-rev { animation: spinSlowReverse 18s linear infinite; }
+
+    /* Glassmorphic Luxury Card (Clean Light Aesthetic) */
+    .glass-light {
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      border: 1px solid rgba(214, 235, 222, 0.9);
+      box-shadow: 0 20px 45px -10px rgba(2, 73, 62, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+      border-radius: 28px;
+    }
+
+    /* EcoTrack Luxury Liquid Glass Card */
+    .luxury-glass-card {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.94) 0%, rgba(246, 253, 249, 0.88) 100%);
+      backdrop-filter: blur(28px) saturate(160%);
+      -webkit-backdrop-filter: blur(28px) saturate(160%);
+      border: 1.2px solid rgba(255, 255, 255, 0.95);
+      box-shadow: 0 24px 54px -12px rgba(13, 56, 42, 0.09), 0 2px 10px rgba(13, 56, 42, 0.04), inset 0 1.5px 0 rgba(255, 255, 255, 0.95);
+      border-radius: 28px;
+      position: relative;
+    }
+
+    @keyframes sheen-sweep {
+      0% { transform: translateX(-140%) rotate(35deg); }
+      18%, 100% { transform: translateX(340%) rotate(35deg); }
+    }
+    .sheen-anim {
+      animation: sheen-sweep 5s ease-in-out infinite;
+    }
+
+    @keyframes laser-sweep {
+      0% { top: 0%; opacity: 0.9; }
+      50% { top: 92%; opacity: 1; }
+      100% { top: 0%; opacity: 0.9; }
+    }
+    .laser-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2.5px;
+      background: #10B981;
+      box-shadow: 0 0 12px #10B981, 0 0 4px #B9F36B;
+      animation: laser-sweep 1.1s ease-in-out infinite;
+    }
+
+    @keyframes pulse-halo {
+      0% { transform: scale(0.9); opacity: 0.9; }
+      70% { transform: scale(1.85); opacity: 0; }
+      100% { transform: scale(0.9); opacity: 0; }
+    }
+    .pulse-halo {
+      animation: pulse-halo 1.8s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+    }
+
+    @keyframes transit-drift {
+      0% { transform: translateX(-180px); }
+      100% { transform: translateX(calc(100vw + 180px)); }
+    }
+    .transit-ghost-row {
+      animation: transit-drift 28s linear infinite;
+    }
+
+    .eco-input-wrapper {
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .eco-input-wrapper:focus-within {
+      border-color: #1DB954 !important;
+      box-shadow: 0 0 0 3.5px rgba(29, 185, 84, 0.20) !important;
+    }
+
+    /* Zero-Lag Velocity Gauge */
+    #gaugeFillPath {
+      transition: stroke-dashoffset 0.05s linear;
+    }
+
+    /* Accessible Focus Indicators & Reduced Motion */
+    button:focus-visible, a:focus-visible, input:focus-visible {
+      outline: 2px solid #22C55E !important;
+      outline-offset: 2px !important;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, ::before, ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    /* Prismatic Border Refraction */
+    .prismatic-glass {
+      position: relative;
+    }
+    .prismatic-glass::before {
+      content: '';
+      position: absolute;
+      inset: -1.5px;
+      border-radius: 32px;
+      background: radial-gradient(380px circle at var(--mouse-x, 50%) var(--mouse-y, 30%), rgba(74, 222, 128, 0.55), rgba(34, 197, 94, 0.25) 30%, rgba(255, 255, 255, 0.08) 60%, transparent 100%);
+      z-index: -1;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+  </style>
+
+</head>
+<body>
+
+  <div class="app-root">
+
+                  <!-- ================= 1. QUANTUM BIOSPHERE CALIBRATION LOADING SCREEN ================= -->
+      <div id="loadingScreen" class="fixed inset-0 z-[2000] flex flex-col justify-between p-6 select-none bg-gradient-to-b from-[#021811] via-[#05261B] to-[#01110B] text-white overflow-hidden">
+        <!-- Top Status & Instant Skip Button -->
+        <div class="pt-4 flex items-center justify-between z-10 max-w-[420px] w-full mx-auto">
+          <div class="flex items-center space-x-2 bg-white/10 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/15 shadow-sm">
+            <span class="w-2 h-2 rounded-full bg-[#10B981] brand-pulse"></span>
+            <span class="text-[9.5px] font-bold uppercase tracking-widest text-[#A7F3D0]">QUANTUM BIOSYNC // IPCC TIER-1</span>
+          </div>
+          <button onclick="dismissLoadingScreen()" class="min-h-[44px] min-w-[44px] px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-white text-xs font-bold transition active:scale-95 cursor-pointer flex items-center justify-center">
+            Skip ➔
+          </button>
+        </div>
+
+        <!-- Center: Gyroscopic Kinetic Calibration Rings + Floating Chlorophyll Squircle -->
+        <div class="flex flex-col items-center justify-center my-auto z-10 relative">
+          <div class="relative w-64 h-64 sm:w-72 sm:h-72 flex items-center justify-center">
+            <!-- 60FPS Quantum Kinetic Ring Canvas -->
+            <canvas id="bootAnimCanvas" class="w-full h-full block absolute inset-0"></canvas>
+
+            <!-- Center Floating Squircle Emblem -->
+            <div class="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-[#064E3B] via-[#043327] to-[#021811] border border-[#34D399]/40 flex items-center justify-center shadow-[0_0_35px_rgba(52,211,153,0.45)] z-10">
+              <svg class="w-10 h-10 text-[#34D399] drop-shadow-[0_0_12px_rgba(52,211,153,0.8)]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66.95-2.3c.48.17.98.3 1.34.3C19 20 22 3 22 3c-1 2-8 2.25-13 3.25S2 11.5 2 13.5c0 2 1.5 3.5 3 3.5 1 0 2.5-.5 3.5-1.5 1.5-1.5 2-4.5 4-5.5.8-.4 1.5-.7 2.2-1C15.5 8.7 16.3 8.3 17 8z"/>
+                <path d="M7.5 13.5c-2.5 1-3.5 4.5-4 7.5 3-.5 6.5-1.5 7.5-4 1-2.5 0-4-3.5-3.5z" opacity="0.8"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Brand Title & Tagline -->
+          <div class="text-center mt-3">
+            <div class="flex items-center justify-center space-x-1.5">
+              <span class="text-xl font-black tracking-tight text-white">Eco</span>
+              <span class="text-xl font-black tracking-tight text-[#34D399]">Track</span>
+            </div>
+            <p class="text-[11px] font-bold text-[#A7F3D0]/90 tracking-widest uppercase mt-0.5">Autonomous Mobility Intelligence</p>
+          </div>
+        </div>
+
+        <!-- Bottom Loading Progress & Telemetry Dock -->
+        <div class="pb-6 z-10 space-y-2 max-w-[420px] w-full mx-auto">
+          <div class="flex justify-between items-center text-[11px] font-bold">
+            <span id="loadingStatusText" class="text-white/85">Calibrating Precision GPS Vector Engine...</span>
+            <span id="loadingPercentText" class="text-[#34D399] font-black text-sm tabular-nums">0%</span>
+          </div>
+
+          <!-- Glowing Laser Progress Bar -->
+          <div class="w-full h-2.5 bg-black/40 rounded-full overflow-hidden p-0.5 border border-white/15 shadow-inner">
+            <div id="loadingProgressBar" class="h-full bg-gradient-to-r from-[#047857] via-[#10B981] to-[#34D399] rounded-full transition-all duration-100 relative shadow-sm" style="width: 0%">
+              <div class="absolute right-0 top-0 bottom-0 w-2.5 bg-white rounded-full shadow-[0_0_10px_#34D399]"></div>
+            </div>
+          </div>
+
+          <div class="flex justify-between items-center text-[9px] text-white/60 px-0.5 font-bold uppercase tracking-wider">
+            <span>CPCB & IPCC Tier-1 Certified</span>
+            <span>60 FPS Live Velocity Engine</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= 2. LUMINOUS PEARL & ALABASTER LIVING NATURE LOGIN SCREEN ================= -->
+      <div id="loginScreen" class="fixed inset-0 z-[1500] flex flex-col items-center justify-between overflow-x-hidden overflow-y-auto select-none" style="background: linear-gradient(180deg, #F3F9F5 0%, #E8F4EC 50%, #DCEDE2 100%); color: #073B2E;">
+        
+        <!-- Living Procedural Sunlight & Sage Biosphere Canvas -->
+        <canvas id="ambientBiosphereCanvas" class="absolute inset-0 w-full h-full pointer-events-none z-0"></canvas>
+        <div class="absolute inset-0 bg-radial from-white/30 via-transparent to-[#D5EADB]/40 pointer-events-none z-0"></div>
+
+        <!-- Phone / Container Frame Wrapper (Max 420px for perfect mobile fidelity) -->
+        <div class="w-full max-w-[420px] min-h-full mx-auto flex flex-col justify-between px-4 sm:px-5 py-5 sm:py-6 relative z-10" style="padding-top: max(1.25rem, env(safe-area-inset-top)); padding-bottom: max(1.25rem, env(safe-area-inset-bottom));">
+          
+          <!-- TOP HEADER: Brand Squircle & Live IPCC Node Ticker -->
+          <div class="w-full flex items-center justify-between pt-1 mb-4">
+            <!-- Left: Squircle Logo + Wordmark + Tag -->
+            <div class="flex items-center space-x-2.5">
+              <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#0F6B4A] to-[#073B2E] border border-white/80 flex items-center justify-center p-1.5 shadow-[0_4px_16px_rgba(15,107,74,0.25)] flex-shrink-0">
+                <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66.95-2.3c.48.17.98.3 1.34.3C19 20 22 3 22 3c-1 2-8 2.25-13 3.25S2 11.5 2 13.5c0 2 1.5 3.5 3 3.5 1 0 2.5-.5 3.5-1.5 1.5-1.5 2-4.5 4-5.5.8-.4 1.5-.7 2.2-1C15.5 8.7 16.3 8.3 17 8z"/>
+                  <path d="M7.5 13.5c-2.5 1-3.5 4.5-4 7.5 3-.5 6.5-1.5 7.5-4 1-2.5 0-4-3.5-3.5z" opacity="0.8"/>
+                </svg>
+              </div>
+              <div class="flex flex-col">
+                <div class="flex items-baseline leading-none">
+                  <span class="text-xl font-black tracking-tight text-[#073B2E]">Eco</span>
+                  <span class="text-xl font-black tracking-tight text-[#10B981]">Track</span>
+                </div>
+                <span class="text-[9px] font-bold tracking-[0.25em] text-[#0F6B4A] uppercase mt-1">Move Mindfully</span>
+              </div>
+            </div>
+
+            <!-- Right: Live IPCC Verified Node Ticker Badge -->
+            <div class="flex flex-col items-end text-right">
+              <div class="inline-flex items-center space-x-1.5 bg-white/90 border border-[#BDE3CA] rounded-full px-2.5 py-1 backdrop-blur-md shadow-xs">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#10B981] brand-pulse"></span>
+                <span class="text-[8.5px] font-bold tracking-wider text-[#0F6B4A] uppercase">IPCC Node Active</span>
+              </div>
+              <span class="text-[8.5px] text-[#426857] font-semibold mt-1 tracking-wide tabular-nums">
+                <span id="liveGlobalCounter" class="text-[#073B2E] font-extrabold">1,482,914</span> kg CO₂ logged
+              </span>
+            </div>
+          </div>
+
+          <!-- HERO HEADLINE -->
+          <div class="relative w-full mb-4">
+            <h1 id="authTitle" class="text-[28px] sm:text-[32px] font-black leading-[1.12] tracking-tight text-[#073B2E]">
+              Track every trip.<br>
+              <span class="bg-gradient-to-r from-[#0F6B4A] via-[#10B981] to-[#059669] bg-clip-text text-transparent">Verify every gram.</span>
+            </h1>
+            <p id="authSubtitle" class="text-xs text-[#355B4B] font-medium mt-1.5 leading-relaxed">
+              Autonomous mobility carbon ledger verified by international ESG & IPCC Tier-1 protocols.
+            </p>
+          </div>
+
+          <!-- MAIN LUMINOUS PEARL GLASS AUTH CARD -->
+          <div id="authCard" class="w-full relative rounded-[32px] p-5 sm:p-6 backdrop-blur-3xl border border-white/90 shadow-[0_20px_50px_rgba(7,59,46,0.10),0_0_0_1px_rgba(16,185,129,0.06)] transition-all duration-300" onmousemove="handleAuthCardMouseMove(event)" onmouseleave="handleAuthCardMouseLeave()" style="background: rgba(255, 255, 255, 0.88);">
+            
+            <!-- Sliding-Pill Segmented Tab Control (Sign In vs Create Account) -->
+            <div role="tablist" aria-label="Authentication Options" class="relative grid grid-cols-2 p-1 bg-[#EEF6F1] rounded-2xl mb-4 border border-[#D5EADB] h-12">
+              <div id="authPillIndicator" class="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] bg-gradient-to-r from-[#073B2E] to-[#0F6B4A] rounded-xl shadow-md transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]"></div>
+              
+              <button type="button" role="tab" aria-selected="true" aria-controls="signInForm" onclick="switchAuthTab('signin')" id="tabBtnSignIn" class="relative z-10 py-1.5 flex items-center justify-center space-x-1.5 text-xs font-bold text-white transition min-h-[44px]">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                <span>Sign In</span>
+              </button>
+              <button type="button" role="tab" aria-selected="false" aria-controls="signUpForm" onclick="switchAuthTab('signup')" id="tabBtnSignUp" class="relative z-10 py-1.5 flex items-center justify-center space-x-1.5 text-xs font-bold text-[#4B705F] hover:text-[#073B2E] transition min-h-[44px]">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                <span>Create Account</span>
+              </button>
+            </div>
+
+            <!-- Sign In Form -->
+            <form id="signInForm" onsubmit="handleAuthSubmit(event, 'signin')" class="space-y-3.5">
+              <div>
+                <label class="block text-[11px] font-bold text-[#073B2E] mb-1">Email Address</label>
+                <div class="relative flex items-center bg-[#F7FAF8] border border-[#D5EADB] rounded-2xl px-3.5 py-3 transition focus-within:border-[#10B981] focus-within:ring-2 focus-within:ring-[#10B981]/25 focus-within:bg-white">
+                  <svg class="w-4 h-4 text-[#5D8270] mr-2.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
+                  <input 
+                    type="email" 
+                    id="loginEmail" 
+                    required 
+                    placeholder="Enter your email" 
+                    class="w-full text-xs font-semibold text-[#073B2E] placeholder-[#8CAEA0] outline-none bg-transparent"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between items-center mb-1">
+                  <label class="text-[11px] font-bold text-[#073B2E]">Password</label>
+                  <a href="javascript:void(0)" onclick="alert('Password reset link sent to your registered mobility email!')" class="text-[11px] text-[#0F6B4A] hover:text-[#10B981] font-bold transition">Forgot Password?</a>
+                </div>
+                <div class="relative flex items-center bg-[#F7FAF8] border border-[#D5EADB] rounded-2xl px-3.5 py-3 transition focus-within:border-[#10B981] focus-within:ring-2 focus-within:ring-[#10B981]/25 focus-within:bg-white">
+                  <svg class="w-4 h-4 text-[#5D8270] mr-2.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                  <input 
+                    type="password" 
+                    id="loginPassword" 
+                    required 
+                    placeholder="Enter your password" 
+                    class="w-full text-xs font-semibold text-[#073B2E] placeholder-[#8CAEA0] outline-none bg-transparent pr-8"
+                  />
+                  <button type="button" aria-label="Toggle password visibility" onclick="togglePasswordVisibility('loginPassword', 'eyeIconLogin')" class="absolute right-3.5 text-[#5D8270] hover:text-[#073B2E] transition cursor-pointer">
+                    <span id="eyeIconLogin">
+                      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Options Row: Keep me signed in & Biometrics -->
+              <div class="flex items-center justify-between pt-0.5">
+                <label class="flex items-center space-x-2 text-xs text-[#355B4B] font-semibold cursor-pointer">
+                  <input type="checkbox" checked class="w-4 h-4 rounded accent-[#0F6B4A] cursor-pointer" />
+                  <span>Keep me signed in</span>
+                </label>
+
+                <!-- Biometrics Button -->
+                <button type="button" onclick="triggerBiometricLogin()" id="btnBiometricLogin" class="flex items-center space-x-1.5 text-xs text-[#0F6B4A] hover:text-[#10B981] font-bold transition cursor-pointer relative overflow-hidden">
+                  <div id="biometricLaser" class="hidden laser-line"></div>
+                  <svg class="w-4 h-4 text-[#0F6B4A]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 11c0 3.5-2 6-4.5 7.5M12 7c-2.5 0-5 2-5 5.5 0 3 1.5 5.5 3.5 7M12 3c-4.5 0-9 3.5-9 9.5 0 3.5 1.5 6.5 4 8.5M15.5 7.5c2 1.5 3.5 4 3.5 7 0 2.5-1 4.5-2.5 6M19 11c0 2.5-.5 5-2 7M8 12a4 4 0 018 0"/></svg>
+                  <span id="biometricLabel">Use biometrics</span>
+                </button>
+              </div>
+
+              <!-- Primary CTA Button: Radiant Emerald Gradient Pill -->
+              <button 
+                type="submit" 
+                id="authSubmitBtn"
+                class="relative overflow-hidden w-full h-12 mt-2 rounded-full bg-gradient-to-r from-[#073B2E] via-[#0F6B4A] to-[#15803D] text-white font-extrabold text-sm shadow-[0_6px_20px_rgba(7,59,46,0.3)] hover:shadow-[0_8px_25px_rgba(7,59,46,0.4)] active:scale-[0.98] transition flex items-center justify-center space-x-2 cursor-pointer"
+              >
+                <!-- Sheen Sweep -->
+                <div class="sheen-anim absolute inset-0 w-1/3 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none"></div>
+                <span id="authBtnText" class="relative z-10 font-black text-sm">Sign In →</span>
+                <span id="authBtnIcon" class="relative z-10 hidden"></span>
+                
+                <!-- Embossed Organic Leaf Watermark on Right Side -->
+                <div class="absolute right-4 top-1/2 -translate-y-1/2 opacity-20 pointer-events-none">
+                  <svg class="w-10 h-10 text-white" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66.95-2.3c.48.17.98.3 1.34.3C19 20 22 3 22 3c-1 2-8 2.25-13 3.25S2 11.5 2 13.5c0 2 1.5 3.5 3 3.5 1 0 2.5-.5 3.5-1.5 1.5-1.5 2-4.5 4-5.5.8-.4 1.5-.7 2.2-1C15.5 8.7 16.3 8.3 17 8z"/>
+                  </svg>
+                </div>
+              </button>
+            </form>
+
+            <!-- Create Account Form (Initially Hidden) -->
+            <form id="signUpForm" onsubmit="handleAuthSubmit(event, 'signup')" class="space-y-3.5 hidden">
+              <div>
+                <label class="block text-[11px] font-bold text-[#073B2E] mb-1">Full Name</label>
+                <div class="relative flex items-center bg-[#F7FAF8] border border-[#D5EADB] rounded-2xl px-3.5 py-3 transition focus-within:border-[#10B981] focus-within:bg-white">
+                  <svg class="w-4 h-4 text-[#5D8270] mr-2.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  <input type="text" id="regName" required placeholder="Alex Morgan" class="w-full text-xs font-semibold text-[#073B2E] placeholder-[#8CAEA0] outline-none bg-transparent" />
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-bold text-[#073B2E] mb-1">Email Address</label>
+                <div class="relative flex items-center bg-[#F7FAF8] border border-[#D5EADB] rounded-2xl px-3.5 py-3 transition focus-within:border-[#10B981] focus-within:bg-white">
+                  <svg class="w-4 h-4 text-[#5D8270] mr-2.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
+                  <input type="email" id="regEmail" required placeholder="Enter your email" class="w-full text-xs font-semibold text-[#073B2E] placeholder-[#8CAEA0] outline-none bg-transparent" />
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-bold text-[#073B2E] mb-1">Create Strong Password</label>
+                <div class="relative flex items-center bg-[#F7FAF8] border border-[#D5EADB] rounded-2xl px-3.5 py-3 transition focus-within:border-[#10B981] focus-within:bg-white">
+                  <svg class="w-4 h-4 text-[#5D8270] mr-2.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                  <input 
+                    type="password" 
+                    id="regPassword" 
+                    required 
+                    oninput="calculatePasswordStrength(this.value)"
+                    placeholder="Min. 8 chars, 1 uppercase, 1 symbol" 
+                    class="w-full text-xs font-semibold text-[#073B2E] placeholder-[#8CAEA0] outline-none bg-transparent pr-8" 
+                  />
+                  <button type="button" aria-label="Toggle password visibility" onclick="togglePasswordVisibility('regPassword', 'eyeIconReg')" class="absolute right-3.5 text-[#5D8270] hover:text-[#073B2E] transition cursor-pointer">
+                    <span id="eyeIconReg">
+                      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </span>
+                  </button>
+                </div>
+                
+                <!-- 4-Segment Password Strength Meter -->
+                <div class="mt-2 space-y-1">
+                  <div class="grid grid-cols-4 gap-1.5">
+                    <div id="strBar1" class="h-1 rounded-full bg-[#D5EADB] transition-colors duration-200"></div>
+                    <div id="strBar2" class="h-1 rounded-full bg-[#D5EADB] transition-colors duration-200"></div>
+                    <div id="strBar3" class="h-1 rounded-full bg-[#D5EADB] transition-colors duration-200"></div>
+                    <div id="strBar4" class="h-1 rounded-full bg-[#D5EADB] transition-colors duration-200"></div>
+                  </div>
+                  <p id="strLabel" class="text-[10px] font-bold text-[#5D8270]">Password strength</p>
+                </div>
+              </div>
+
+              <!-- Terms Checkbox -->
+              <div class="flex items-center space-x-2 pt-1">
+                <input type="checkbox" id="termsAgree" required class="w-4 h-4 rounded accent-[#0F6B4A] cursor-pointer" />
+                <label for="termsAgree" class="text-xs text-[#355B4B] font-semibold cursor-pointer">
+                  I agree to the <a href="javascript:void(0)" onclick="openIpccModal()" class="text-[#0F6B4A] font-extrabold underline">IPCC Protocol & Terms</a>
+                </label>
+              </div>
+
+              <!-- Create Account Submit Button -->
+              <button 
+                type="submit" 
+                id="authRegBtn"
+                class="relative overflow-hidden w-full h-12 mt-2 rounded-full bg-gradient-to-r from-[#073B2E] via-[#0F6B4A] to-[#15803D] text-white font-extrabold text-sm shadow-[0_6px_20px_rgba(7,59,46,0.3)] hover:shadow-[0_8px_25px_rgba(7,59,46,0.4)] active:scale-[0.98] transition flex items-center justify-center space-x-2 cursor-pointer"
+              >
+                <div class="sheen-anim absolute inset-0 w-1/3 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none"></div>
+                <span class="relative z-10 font-black text-sm">Create EcoTrack Account →</span>
+              </button>
+            </form>
+
+            <!-- Interactive Commute Impact Estimator Pill & Micro-Drawer -->
+            <div class="mt-3.5 mb-1 bg-[#F2F8F4] rounded-2xl p-3 border border-[#D5EADB]">
+              <div class="flex items-center justify-between cursor-pointer" onclick="toggleCommuteEstimator()">
+                <div class="flex items-center space-x-2">
+                  <span class="text-xs text-[#0F6B4A]">⚡</span>
+                  <span class="text-[11px] font-extrabold text-[#073B2E]">Preview Your Daily Commute Savings</span>
+                </div>
+                <span id="estimatorToggleChevron" class="text-xs text-[#0F6B4A] font-bold transition-transform duration-200">▼</span>
+              </div>
+              <div id="commuteEstimatorDrawer" class="hidden mt-2.5 pt-2.5 border-t border-[#D5EADB] space-y-2">
+                <div class="flex items-center justify-between text-[10px]">
+                  <span class="text-[#4B705F] font-semibold">Daily Commute Distance:</span>
+                  <span id="commuteDistanceVal" class="font-extrabold text-[#073B2E] tabular-nums">15 km</span>
+                </div>
+                <input 
+                  type="range" 
+                  id="commuteSlider" 
+                  min="2" 
+                  max="50" 
+                  value="15" 
+                  aria-label="Daily commute distance in kilometers"
+                  oninput="updateCommuteSavings(this.value)"
+                  class="w-full h-1.5 bg-[#D5EADB] rounded-lg appearance-none cursor-pointer accent-[#0F6B4A]"
+                />
+                <div class="grid grid-cols-2 gap-2 pt-1 text-center">
+                  <div class="p-2 rounded-xl bg-white border border-[#D5EADB] shadow-2xs">
+                    <span class="text-[8.5px] text-[#5D8270] font-bold block">Yearly CO₂ Saved</span>
+                    <span id="estSavingsKg" class="text-xs font-black text-[#0F6B4A] tabular-nums">~428 kg</span>
+                  </div>
+                  <div class="p-2 rounded-xl bg-white border border-[#D5EADB] shadow-2xs">
+                    <span class="text-[8.5px] text-[#5D8270] font-bold block">Trees Equivalent</span>
+                    <span id="estSavingsTrees" class="text-xs font-black text-[#15803D] tabular-nums">~19 trees</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- "OR CONTINUE WITH" Divider -->
+            <div class="flex items-center my-3.5 space-x-3">
+              <div class="flex-1 h-[1px] bg-[#D5EADB]"></div>
+              <span class="text-[9px] uppercase font-extrabold text-[#5D8270] tracking-widest">OR CONTINUE WITH</span>
+              <div class="flex-1 h-[1px] bg-[#D5EADB]"></div>
+            </div>
+
+            <!-- 3 Circular Social Auth Buttons (Google, Apple, Microsoft) -->
+            <div class="flex items-center justify-center space-x-4 mb-2">
+              <!-- 1. Google Button -->
+              <button 
+                type="button" 
+                onclick="triggerGoogleLogin()" 
+                id="btnGoogleLogin"
+                title="Continue with Google"
+                aria-label="Continue with Google"
+                class="w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-white hover:bg-[#F2F8F4] border border-[#D5EADB] hover:border-[#0F6B4A] flex items-center justify-center transition active:scale-95 shadow-xs cursor-pointer"
+              >
+                <svg class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                </svg>
+              </button>
+
+              <!-- 2. Apple Button -->
+              <button 
+                type="button" 
+                onclick="triggerSocialLogin('Apple')" 
+                title="Continue with Apple"
+                aria-label="Continue with Apple"
+                class="w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-white hover:bg-[#F2F8F4] border border-[#D5EADB] hover:border-[#0F6B4A] flex items-center justify-center transition active:scale-95 shadow-xs cursor-pointer text-[#073B2E]"
+              >
+                <svg class="w-5 h-5 fill-current" viewBox="0 0 170 170">
+                  <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.69-3.04-7.6-7.85-11.75-14.43-6.41-10.15-11.51-21.75-15.31-34.78-3.79-13.03-5.69-25.04-5.69-36.03 0-14.07 3.3-25.68 9.9-34.82 6.6-9.13 15.01-13.79 25.24-13.99 4.99 0 10.45 1.34 16.38 4.02 5.93 2.68 9.77 4.07 11.51 4.17 1.63 0 5.65-1.44 12.06-4.32 6.41-2.88 12.02-4.14 16.83-3.77 12.48.98 22.38 5.65 29.69 14.02-10.97 6.64-16.34 15.66-16.1 27.05.24 8.91 3.52 16.38 9.84 22.41 6.32 6.03 13.96 9.53 22.92 10.51-2.06 6.3-4.66 12.98-7.81 20.03zM119.22 33.15c0-7.37 2.65-14.18 7.95-20.43 5.3-6.25 11.76-10.19 19.38-11.82.98 7.04-.87 13.88-5.55 20.52-4.68 6.64-11.18 10.74-19.5 12.3-.39-.18-1.07-.37-2.04-.57-.16-.01-.24-.01-.24 0z"/>
+                </svg>
+              </button>
+
+              <!-- 3. Microsoft Button -->
+              <button 
+                type="button" 
+                onclick="triggerSocialLogin('Microsoft')" 
+                title="Continue with Microsoft"
+                aria-label="Continue with Microsoft"
+                class="w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-white hover:bg-[#F2F8F4] border border-[#D5EADB] hover:border-[#0F6B4A] flex items-center justify-center transition active:scale-95 shadow-xs cursor-pointer"
+              >
+                <div class="grid grid-cols-2 gap-1 w-5 h-5">
+                  <div class="bg-[#F25022] rounded-xs"></div>
+                  <div class="bg-[#7FBA00] rounded-xs"></div>
+                  <div class="bg-[#00A4EF] rounded-xs"></div>
+                  <div class="bg-[#FFB900] rounded-xs"></div>
+                </div>
+              </button>
+            </div>
+
+            <!-- Demo 1-Tap Access Quick Link -->
+            <div class="text-center pt-1 pb-1">
+              <button type="button" onclick="fillDemoAndLogin()" class="text-[11px] font-extrabold text-[#0F6B4A] hover:text-[#073B2E] transition inline-flex items-center space-x-1.5 cursor-pointer bg-[#EEF8F2] hover:bg-[#E2F3E8] border border-[#BDE3CA] rounded-full px-3 py-1 shadow-2xs">
+                <svg class="w-3.5 h-3.5 text-[#F59E0B]" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                <span>Jump in with 1-Tap Demo Account</span>
+              </button>
+            </div>
+
+            <!-- Security Trust Footnote inside Card -->
+            <div class="pt-3 border-t border-[#D5EADB] flex items-center space-x-2.5">
+              <div class="flex-shrink-0 text-[#0F6B4A]">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+              </div>
+              <div class="leading-tight text-left">
+                <p class="text-[11px] font-extrabold text-[#073B2E]">Secured by IPCC Tier-1 Carbon Ledger</p>
+                <p class="text-[9.5px] text-[#5D8270] font-medium">Tamper-proof SHA-256 mobility telemetry protocol.</p>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- BOTTOM SECTION: Minimalist Environmental Highlights -->
+          <div class="w-full relative mt-4 pt-2">
+            <div class="grid grid-cols-3 gap-2 text-center">
+              <div class="p-2 rounded-xl bg-white/80 border border-[#D5EADB] shadow-2xs">
+                <span class="text-[8.5px] font-black tracking-widest text-[#0F6B4A] uppercase block">Net-Zero</span>
+                <span class="text-[9.5px] font-bold text-[#073B2E]">Transit Lock</span>
+              </div>
+              <div class="p-2 rounded-xl bg-white/80 border border-[#D5EADB] shadow-2xs">
+                <span class="text-[8.5px] font-black tracking-widest text-[#0F6B4A] uppercase block">60 FPS</span>
+                <span class="text-[9.5px] font-bold text-[#073B2E]">Real-Time</span>
+              </div>
+              <div class="p-2 rounded-xl bg-white/80 border border-[#D5EADB] shadow-2xs">
+                <span class="text-[8.5px] font-black tracking-widest text-[#0F6B4A] uppercase block">Verified</span>
+                <span class="text-[9.5px] font-bold text-[#073B2E]">ESG Ledger</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- ================= IPCC LEDGER AUDIT PROTOCOL MODAL ================= -->
+      <div id="ipccLedgerModal" class="fixed inset-0 z-[2500] hidden items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-4" onclick="closeIpccModal(event)">
+        <div class="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl border border-[#D5EADB] space-y-4" onclick="event.stopPropagation()">
+          <div class="w-10 h-1.5 rounded-full bg-[#E2E8F0] mx-auto mb-2 sm:hidden"></div>
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-2xl bg-[#E8F5E9] flex items-center justify-center text-[#1DB954] flex-shrink-0">
+              <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+            </div>
+            <div>
+              <h3 class="text-base font-extrabold text-[#0F172A]">IPCC Tier-1 Carbon Ledger</h3>
+              <p class="text-xs text-[#64748B]">Certified Emission Audit Protocol</p>
+            </div>
+          </div>
+          <p class="text-xs leading-relaxed text-[#64748B]">
+            Every kilometer tracked in EcoTrack is cryptographically logged using Intergovernmental Panel on Climate Change (IPCC) Tier-1 fuel combustion and electricity grid carbon intensity coefficients. Your carbon savings are tamper-proof, auditable, and compliant with international ESG standards.
+          </p>
+          <div class="grid grid-cols-2 gap-2 pt-1 text-[11px] font-semibold text-[#0D382A]">
+            <div class="p-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
+              <span class="text-[#0F6B4A] font-bold block">✓ ISO 14064-1</span>
+              Verified GHG Accounting
+            </div>
+            <div class="p-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
+              <span class="text-[#0F6B4A] font-bold block">✓ Tamper-Proof</span>
+              SHA-256 Ledger Hash
+            </div>
+          </div>
+          <button type="button" onclick="closeIpccModal()" class="w-full py-3 rounded-2xl bg-[#073B2E] hover:bg-[#0F6B4A] text-white font-bold text-xs transition cursor-pointer">
+            Close & Return to App
+          </button>
+        </div>
+      </div>
+
+      <!-- ================= 3. ELITE STICKY APP HEADER (56dp) ================= -->
+      <header id="stickyHeader" role="banner" class="sticky top-0 z-30 bg-white/95 backdrop-blur-xl px-4 py-2.5 border-b border-[#D4E6DC] transition-all duration-200">
+        <div class="flex items-center justify-between max-w-[440px] mx-auto">
+          <!-- Squircle Logo & Brand Wordmark -->
+          <div class="flex items-center space-x-2.5">
+            <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#EEF8F2] to-white border border-[#D4E6DC] shadow-xs flex items-center justify-center p-1.5 flex-shrink-0">
+              <svg class="w-6 h-6 text-[#0F6B4A]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66.95-2.3c.48.17.98.3 1.34.3C19 20 22 3 22 3c-1 2-8 2.25-13 3.25S2 11.5 2 13.5c0 2 1.5 3.5 3 3.5 1 0 2.5-.5 3.5-1.5 1.5-1.5 2-4.5 4-5.5.8-.4 1.5-.7 2.2-1C15.5 8.7 16.3 8.3 17 8z"/>
+              </svg>
+            </div>
+            <div>
+              <div class="flex items-center space-x-1">
+                <span class="text-base font-black text-[#073B2E] tracking-tight">Eco</span>
+                <span class="text-base font-black text-[#15803D] tracking-tight">Track</span>
+                <span class="w-1.5 h-1.5 rounded-full bg-[#22C55E] brand-pulse ml-0.5"></span>
+              </div>
+              <p id="headerTagline" class="text-[9.5px] font-bold text-[#5D7A6E] tracking-wider uppercase leading-none">GPS Live Telemetry</p>
+            </div>
+          </div>
+          
+          <!-- Actions & User Session Pill -->
+          <div class="flex items-center space-x-1.5">
+            <!-- User Session Avatar Chip -->
+            <div onclick="openLoginScreen()" title="Switch Account / Lock" role="button" aria-label="Switch Account or Lock App" class="min-h-[44px] flex items-center space-x-1.5 bg-[#EEF8F2] hover:bg-[#E2F3E8] px-2.5 py-1.5 rounded-full border border-[#D4E6DC] shadow-2xs cursor-pointer transition active:scale-95">
+              <span class="w-1.5 h-1.5 rounded-full bg-[#1E9E5A]"></span>
+              <span id="headerUserName" class="text-[11px] font-extrabold text-[#073B2E] max-w-[55px] truncate">AM</span>
+              <svg class="w-3 h-3 text-[#5D7A6E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            </div>
+
+            <!-- Recenter GPS Map Button -->
+            <button onclick="recenterMap()" title="Recenter GPS Position" class="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-white border border-[#D4E6DC] flex items-center justify-center text-[#073B2E] shadow-2xs active:scale-90 transition hover:bg-[#F3FAF6] cursor-pointer" aria-label="Recenter GPS Position">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
+            </button>
+
+            <!-- Audit Report Action Button -->
+            <button onclick="openReportModal()" title="View Carbon Audit Report" class="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-white border border-[#D4E6DC] flex items-center justify-center text-[#073B2E] shadow-2xs active:scale-90 transition hover:bg-[#F3FAF6] cursor-pointer" aria-label="View Carbon Audit Report">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- ================= MAIN LIVE DASHBOARD VIEWPORT ================= -->
+      <main id="mainDashboard" role="main" class="flex-1 p-3 sm:p-4 space-y-3 pb-24 max-w-[440px] mx-auto w-full">
+        <h1 class="sr-only">EcoTrack — Real-Time GPS Mobility & Carbon Ledger</h1>
+        <h2 class="sr-only">Live Telemetry & Carbon Tracking Console</h2>
+
+        <!-- 1. UNIFIED MOBILITY MODE & CARBON INTENSITY CONSOLE -->
+        <div class="bg-white rounded-2xl border border-[#D4E6DC] shadow-xs p-2 space-y-2">
+          <!-- 4-Pill Segmented Mode Switcher -->
+          <div class="grid grid-cols-4 gap-1 p-1 bg-[#EEF8F2] rounded-xl border border-[#D4E6DC]/60 min-h-[48px]">
+            <!-- Scooty Button -->
+            <button onclick="setTransitMode('scooty')" id="btnMode_scooty" class="relative z-10 py-1.5 px-2 min-h-[44px] rounded-lg font-bold text-xs transition active:scale-95 flex items-center justify-center space-x-1.5 bg-white text-[#5D7A6E] border border-[#D4E6DC]">
+              <svg class="w-3.5 h-3.5 text-[#F06A5B]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M6 15h6l3-8h4M14 6h3"/></svg>
+              <span class="text-[11px]">Scooty</span>
+            </button>
+            <!-- Bike Button -->
+            <button onclick="setTransitMode('bike')" id="btnMode_bike" class="relative z-10 py-1.5 px-2 min-h-[44px] rounded-lg font-bold text-xs transition active:scale-95 flex items-center justify-center space-x-1.5 bg-white text-[#5D7A6E] border border-[#D4E6DC]">
+              <svg class="w-3.5 h-3.5 text-[#F2A900]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M12 17l-3-6h5l-2-4h-2"/></svg>
+              <span class="text-[11px]">Bike</span>
+            </button>
+            <!-- Car Button (Default Selected) -->
+            <button onclick="setTransitMode('car')" id="btnMode_car" style="background-color: #073B2E;" class="relative z-10 py-1.5 px-2 min-h-[44px] rounded-lg font-extrabold text-xs transition active:scale-95 flex items-center justify-center space-x-1.5 bg-gradient-to-r from-[#073B2E] via-[#0F6B4A] to-[#1E9E5A] text-white shadow-xs">
+              <svg class="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 17h14M3 11l2-5h14l2 5M3 11v6a1 1 0 001 1h1m16 0h1a1 1 0 001-1v-6"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+              <span class="text-[11px]">Car</span>
+            </button>
+            <!-- Bus Button -->
+            <button onclick="setTransitMode('bus')" id="btnMode_bus" class="relative z-10 py-1.5 px-2 min-h-[44px] rounded-lg font-bold text-xs transition active:scale-95 flex items-center justify-center space-x-1.5 bg-white text-[#5D7A6E] border border-[#D4E6DC]">
+              <svg class="w-3.5 h-3.5 text-[#2F80ED]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="16" rx="3"/><path d="M4 11h16M8 15h.01M16 15h.01M6 19v2M18 19v2"/></svg>
+              <span class="text-[11px]">Bus</span>
+            </button>
+          </div>
+
+          <!-- Integrated Context Strip & Emission Factor -->
+          <div id="vehicleContextStrip" class="flex items-center justify-between px-2.5 py-1.5 bg-[#F9FCFA] rounded-xl border border-[#D4E6DC]/80 border-l-4 border-l-[#0F6B4A]">
+            <div class="flex items-center space-x-2">
+              <span id="detectedVehicleIcon" class="text-base">🚗</span>
+              <div class="flex items-center space-x-1.5">
+                <span id="vehicleModelTitle" class="text-xs font-black text-[#073B2E]">Car</span>
+                <span id="vehicleCategoryBadge" class="text-[8.5px] bg-[#EEF8F2] text-[#0F6B4A] border border-[#D4E6DC] px-1.5 py-0.5 rounded font-bold uppercase">Passenger</span>
+                <span id="vehicleSpecsLine" class="text-[10px] text-[#5D7A6E] font-medium hidden sm:inline">— Standard vehicle</span>
+              </div>
+            </div>
+            <div class="flex items-center space-x-2">
+              <span id="emissionFactorDisplay" class="text-[11px] font-extrabold text-[#073B2E] tabular-nums">0.1710 kg CO₂e/km</span>
+              <div class="w-9 h-1.5 bg-[#EEF8F2] rounded-full overflow-hidden border border-[#D4E6DC]">
+                <div id="emissionIntensityBar" class="h-full bg-[#0F6B4A] rounded-full transition-all duration-300" style="width: 57%;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. HERO UNIFIED LIVE TELEMETRY COCKPIT (MAP + KINEMATIC CANVAS + VELOCITY METER) -->
+        <div id="kinematicCard" class="bg-white rounded-3xl border border-[#D4E6DC] shadow-sm overflow-hidden relative transition-all">
+          
+          <!-- Top: Interactive Live GPS Map Viewport -->
+          <div class="relative w-full overflow-hidden border-b border-[#D4E6DC]/60" style="height: 185px;">
+            <div id="realLeafletMap" style="height: 100%; border-radius: 0;"></div>
+            
+            <!-- Map Floating Badges: GPS Status & Recenter Compass -->
+            <div class="absolute top-2.5 left-2.5 z-[1000] flex items-center space-x-1.5 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-full border border-[#D4E6DC] shadow-xs">
+              <span class="w-1.5 h-1.5 rounded-full bg-[#1E9E5A] brand-pulse"></span>
+              <span class="text-[9.5px] font-extrabold text-[#073B2E] uppercase tracking-wider">GPS Live Lock</span>
+            </div>
+
+            <button onclick="recenterMap()" title="Recenter GPS Position" class="absolute top-2.5 right-2.5 z-[1000] w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-white/95 backdrop-blur-md border border-[#D4E6DC] flex items-center justify-center text-[#073B2E] shadow-xs active:scale-90 transition cursor-pointer" aria-label="Recenter GPS Position">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
+            </button>
+          </div>
+
+          <!-- Middle: 60FPS Kinematic Vehicle Canvas Scene -->
+          <div class="relative w-full overflow-hidden bg-gradient-to-b from-[#F2FAF5] to-white border-b border-[#D4E6DC]/60" style="height: 98px;">
+            <!-- Kinematic Engine HUD Badges -->
+            <div class="absolute top-2 left-3 right-3 flex items-center justify-between pointer-events-none z-10">
+              <div class="flex items-center space-x-1.5 bg-white/90 backdrop-blur-xs px-2 py-0.5 rounded-full border border-[#D4E6DC] shadow-2xs">
+                <span id="enginePulseDot" class="w-1.5 h-1.5 rounded-full bg-[#1E9E5A] brand-pulse"></span>
+                <span class="text-[8px] font-black tracking-widest text-[#073B2E] uppercase">Kinematic Engine</span>
+              </div>
+              <div id="engineModuleBadge" class="flex items-center space-x-1 px-2 py-0.5 rounded-full border text-[8.5px] font-black uppercase tracking-wider bg-[#0F6B4A]/10 text-[#0F6B4A] border-[#0F6B4A]/30">
+                <span id="engineModuleIcon">🚗</span>
+                <span id="engineModuleName">CAR</span>
+              </div>
+            </div>
+
+            <!-- Parallax Animated Vehicle Canvas -->
+            <canvas id="vehicleCanvas" class="w-full h-full block"></canvas>
+
+            <!-- Mini HUD Speed -->
+            <div class="absolute bottom-2 right-3 flex items-baseline space-x-0.5 bg-white/95 backdrop-blur-xs px-2 py-0.5 rounded-md border border-[#D4E6DC] shadow-2xs pointer-events-none z-10">
+              <span id="engineHudSpeed" class="text-[10px] font-black text-[#073B2E] tabular-nums">0</span>
+              <span class="text-[8px] font-bold text-[#5D7A6E]">km/h</span>
+            </div>
+          </div>
+
+          <!-- Bottom: Velocity Meter (Below the vehicle canvas!) -->
+          <div class="px-4 py-2.5 bg-[#F9FCFA] flex items-center justify-between">
+            <!-- Digital Speed Readout -->
+            <div class="flex flex-col">
+              <span class="text-[8.5px] font-extrabold uppercase tracking-widest text-[#5D7A6E]">Current Velocity</span>
+              <div class="flex items-baseline space-x-1">
+                <span id="liveSpeed" class="text-3xl font-black text-[#073B2E] tabular-nums tracking-tight">0.0</span>
+                <span class="text-xs font-bold text-[#5D7A6E]">km/h</span>
+              </div>
+            </div>
+
+            <!-- Velocity Gauge Arc -->
+            <div class="relative w-20 h-13 flex items-center justify-center -my-1">
+              <svg class="w-full h-full" viewBox="0 0 200 140">
+                <path d="M 30 115 A 75 75 0 1 1 170 115" fill="none" stroke="#E2EFE7" stroke-width="12" stroke-linecap="round"/>
+                <path id="gaugeProgressArc" d="M 30 115 A 75 75 0 1 1 170 115" fill="none" stroke="url(#arcGradient)" stroke-width="12" stroke-linecap="round" stroke-dasharray="314" stroke-dashoffset="314"/>
+                <defs>
+                  <linearGradient id="arcGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#073B2E"/>
+                    <stop offset="50%" stop-color="#0F6B4A"/>
+                    <stop offset="100%" stop-color="#22C55E"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <span class="absolute text-[8px] font-black text-[#0F6B4A] uppercase tracking-widest pt-2.5">Speed</span>
+            </div>
+
+            <!-- GPS Live Telemetry Chips -->
+            <div class="flex flex-col items-end space-y-1">
+              <span id="liveCoordinatesDisplay" class="text-[9.5px] bg-[#EEF8F2] text-[#073B2E] font-bold px-2 py-0.5 rounded-full border border-[#D4E6DC] flex items-center space-x-1 shadow-2xs">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#1E9E5A] brand-pulse"></span>
+                <span>Locking GPS...</span>
+              </span>
+              <span id="speedFilterStatus" class="text-[8.5px] bg-[#F1F5F2] text-[#264639] font-semibold px-2 py-0.5 rounded-full border border-[#D4E6DC]">
+                Stationary Filtered
+              </span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 3. TRI-METRIC PERFORMANCE TELEMETRY CONSOLE (TRIP • CARBON • TIME) -->
+        <div class="bg-white rounded-2xl border border-[#D4E6DC] shadow-xs p-3">
+          <div class="grid grid-cols-3 divide-x divide-[#D4E6DC]/80 text-center">
+            <!-- Metric 1: Trip Distance -->
+            <div class="px-2 flex flex-col items-center justify-center">
+              <div class="flex items-center space-x-1 text-[#0F6B4A] mb-1">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                <span class="text-[9px] font-black text-[#5D7A6E] uppercase tracking-wider">Distance</span>
+              </div>
+              <div class="flex items-baseline space-x-0.5">
+                <span id="liveDistance" class="text-xl font-black text-[#073B2E] tabular-nums">0.00</span>
+                <span class="text-[10px] font-bold text-[#5D7A6E]">km</span>
+              </div>
+            </div>
+
+            <!-- Metric 2: Net Emissions -->
+            <div class="px-2 flex flex-col items-center justify-center">
+              <div class="flex items-center space-x-1 text-[#1E9E5A] mb-1">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66.95-2.3c.48.17.98.3 1.34.3C19 20 22 3 22 3c-1 2-8 2.25-13 3.25S2 11.5 2 13.5c0 2 1.5 3.5 3 3.5 1 0 2.5-.5 3.5-1.5 1.5-1.5 2-4.5 4-5.5.8-.4 1.5-.7 2.2-1C15.5 8.7 16.3 8.3 17 8z"/>
+                </svg>
+                <span class="text-[9px] font-black text-[#5D7A6E] uppercase tracking-wider">Emissions</span>
+              </div>
+              <div class="flex items-baseline space-x-0.5">
+                <span id="liveCarbon" class="text-xl font-black text-[#1E9E5A] tabular-nums">0.00</span>
+                <span class="text-[10px] font-bold text-[#5D7A6E]">kg CO₂</span>
+              </div>
+            </div>
+
+            <!-- Metric 3: Active Duration -->
+            <div class="px-2 flex flex-col items-center justify-center">
+              <div class="flex items-center space-x-1 text-[#3FA34D] mb-1">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span class="text-[9px] font-black text-[#5D7A6E] uppercase tracking-wider">Duration</span>
+              </div>
+              <span id="liveDuration" class="text-xl font-black text-[#073B2E] tabular-nums">00:00</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. CARBON BUDGET ACCUMULATION CONSOLE (5.0 KG DAILY CAP) -->
+        <div class="bg-white rounded-2xl border border-[#D4E6DC] shadow-xs p-3 space-y-2">
+          <div class="flex justify-between items-center">
+            <div class="flex items-center space-x-1.5">
+              <span class="w-2 h-2 rounded-full bg-[#1E9E5A]"></span>
+              <span class="text-[10px] font-extrabold text-[#5D7A6E] uppercase tracking-wider">Carbon Budget Cap</span>
+            </div>
+            <span id="carbonPercentage" class="text-xs font-black text-[#073B2E]">0% of 5kg cap</span>
+          </div>
+
+          <!-- Progress Bar with Milestone Markers -->
+          <div class="relative w-full h-3 bg-[#EEF8F2] rounded-full overflow-hidden p-0.5 border border-[#D4E6DC]">
+            <div id="carbonBar" class="h-full bg-gradient-to-r from-[#073B2E] via-[#0F6B4A] to-[#22C55E] rounded-full transition-all duration-300 shadow-sm" style="width: 0%"></div>
+          </div>
+
+          <div class="flex justify-between items-center text-[9px] text-[#5D7A6E] font-semibold pt-0.5">
+            <span>0 kg</span>
+            <span class="text-[#0F6B4A] font-bold">5.00 kg allowance remaining</span>
+            <span>5.0 kg</span>
+          </div>
+        </div>
+
+        <!-- 5. AUTONOMOUS MOBILITY SENTINEL & AUDIT TRIGGER -->
+        <div id="autoTripHistory" class="space-y-2">
+          <div class="bg-white rounded-2xl border border-[#D4E6DC] shadow-xs p-3 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+              <div class="w-9 h-9 rounded-xl bg-[#EEF8F2] border border-[#D4E6DC] flex items-center justify-center text-lg shadow-2xs">
+                🚗
+              </div>
+              <div>
+                <div class="flex items-center space-x-1.5">
+                  <h4 id="ledgerCardTitle" class="text-xs font-black text-[#073B2E]">Auto Mobility Tracker Armed</h4>
+                  <span class="text-[8.5px] bg-[#EEF8F2] text-[#073B2E] font-black px-1.5 py-0.5 rounded-full border border-[#D4E6DC]">ARMED</span>
+                </div>
+                <p class="text-[10px] text-[#5D7A6E] mt-0.5">GPS movement triggers automated trip audit</p>
+              </div>
+            </div>
+
+            <button onclick="openReportModal()" aria-label="Open Trip & Carbon Audit Report" class="min-h-[44px] min-w-[44px] px-2.5 py-2 text-xs font-black text-[#0F6B4A] hover:text-[#073B2E] flex items-center space-x-1 flex-shrink-0 ml-2 cursor-pointer">
+              <span>Report</span>
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+          </div>
+        </div>
+
+      </main>
+
+      <!-- ================= 4. FLOATING GLASS BOTTOM DOCK (64dp) ================= -->
+      <div class="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-t border-[#D4E6DC] px-4 py-2.5 shadow-[0_-8px_25px_rgba(0,0,0,0.06)]" style="padding-bottom: max(0.625rem, env(safe-area-inset-bottom));">
+        <div class="max-w-[440px] mx-auto flex items-center space-x-3">
+          <button onclick="resetCurrentTrip()" class="flex-1 h-12 rounded-2xl border border-[#D4E6DC] bg-white hover:bg-[#EEF8F2] text-[#073B2E] font-bold text-xs flex items-center justify-center space-x-1.5 transition active:scale-95 shadow-2xs cursor-pointer">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+            <span>Reset Trip</span>
+          </button>
+          <button onclick="openReportModal()" style="background-color: #073B2E;" class="flex-[2] h-12 rounded-2xl bg-gradient-to-r from-[#073B2E] via-[#0F6B4A] to-[#1E9E5A] text-white font-extrabold text-xs sm:text-sm shadow-md shadow-[#1E9E5A]/25 hover:shadow-lg hover:shadow-[#1E9E5A]/35 flex items-center justify-center space-x-2 transition active:scale-95 cursor-pointer">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+            <span>Audit & Certify Ledger</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ================= MODAL: OFFICIAL TRIP & CARBON AUDIT REPORT ================= -->
+      <div id="reportModal" class="mode-sheet" onclick="closeReportModal(event)">
+        <div class="sheet-card max-h-[92vh] overflow-y-auto" onclick="event.stopPropagation()">
+          <div class="w-10 h-1 bg-[#D6E2D8] rounded-full mx-auto mb-3"></div>
+          
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center space-x-1.5">
+              <span class="text-base">📄</span>
+              <h3 class="text-sm font-extrabold text-[#02493E]">Trip & Carbon Audit Report</h3>
+            </div>
+            <span class="text-[8px] bg-[#02493E] text-white px-2 py-0.5 rounded font-bold">OFFICIAL PROVENANCE</span>
+          </div>
+
+          <div class="bg-[#F9FBF9] border border-[#D6E2D8] rounded-2xl p-3.5 space-y-2.5 text-[10px]">
+            <div class="flex justify-between items-center pb-2 border-b border-[#D6E2D8]">
+              <div>
+                <span class="text-[8px] text-[#5A736A] block">Transit Mode</span>
+                <span class="font-extrabold text-xs text-[#02493E]" id="repModel">Car</span>
+              </div>
+              <div class="text-right">
+                <span class="text-[8px] text-[#5A736A] block">Audit Timestamp</span>
+                <span class="font-bold text-[#122B24]" id="repTimestamp">20-Sep-2026</span>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <span class="text-[8px] text-[#5A736A] block">Mode Category</span>
+                <span class="font-bold text-[#122B24]" id="repCategory">Passenger Vehicle</span>
+              </div>
+              <div>
+                <span class="text-[8px] text-[#5A736A] block">Certified Emission Factor</span>
+                <span class="font-bold text-[#02493E]" id="repFactor">0.1710 kg CO₂e / km</span>
+              </div>
+            </div>
+
+            <div class="pt-2 border-t border-[#D6E2D8] bg-[#E8F5E9]/50 -mx-3.5 px-3.5 py-2">
+              <h4 class="text-[9px] font-extrabold text-[#02493E] uppercase mb-1">Live Telemetry & Carbon Audit</h4>
+              <div class="grid grid-cols-3 gap-1 text-center">
+                <div class="bg-white p-1.5 rounded-lg border border-[#C8E6C9]">
+                  <span class="text-[7.5px] text-[#5A736A] block">Distance</span>
+                  <span class="font-extrabold text-[#122B24]" id="repDistance">0.00 km</span>
+                </div>
+                <div class="bg-white p-1.5 rounded-lg border border-[#C8E6C9]">
+                  <span class="text-[7.5px] text-[#5A736A] block">CO₂ Emitted</span>
+                  <span class="font-extrabold text-[#C62828]" id="repCarbon">0.00 kg</span>
+                </div>
+                <div class="bg-white p-1.5 rounded-lg border border-[#C8E6C9]">
+                  <span class="text-[7.5px] text-[#5A736A] block">Baseline Saved</span>
+                  <span class="font-extrabold text-[#0F6B4A]" id="repSaved">0.00 kg</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="text-[8px] text-[#5A736A] pt-1">
+              Emissions verified under IPCC Guidelines for Greenhouse Gas Inventories & Central Pollution Control Board (CPCB) standards.
+            </div>
+          </div>
+
+          <div class="mt-3 flex space-x-2">
+            <button onclick="window.print()" class="flex-1 py-2 bg-[#E8F5E9] text-[#02493E] font-bold rounded-xl text-xs border border-[#C8E6C9] active:scale-95 transition">
+              🖨️ Print / Save PDF
+            </button>
+            <button onclick="closeReportModal()" class="flex-1 py-2 bg-[#02493E] text-white font-bold rounded-xl text-xs active:scale-95 transition">
+              Close Report
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  <script>
+    function updateClock() {
+      const now = new Date();
+      const clockEl = document.getElementById('systemClock');
+      if (clockEl) {
+        clockEl.innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    const TRANSIT_MODES = {
+      scooty: {
+        id: 'scooty',
+        name: 'Scooty',
+        category: 'Two-Wheeler',
+        specs: 'Lightweight Scooter • 0.042 kg CO₂e / km',
+        factor: 0.0420,
+        icon: '🛵',
+        animType: 'scooty'
+      },
+      bike: {
+        id: 'bike',
+        name: 'Bike',
+        category: 'Two-Wheeler',
+        specs: 'Standard Motorcycle • 0.052 kg CO₂e / km',
+        factor: 0.0520,
+        icon: '🏍️',
+        animType: 'bike'
+      },
+      car: {
+        id: 'car',
+        name: 'Car',
+        category: 'Passenger Vehicle',
+        specs: 'Standard Passenger Car • 0.171 kg CO₂e / km',
+        factor: 0.1710,
+        icon: '🚗',
+        animType: 'car'
+      },
+      bus: {
+        id: 'bus',
+        name: 'Bus',
+        category: 'Public Transit',
+        specs: 'Shared Public Transit • 0.089 kg CO₂e / km',
+        factor: 0.0890,
+        icon: '🚌',
+        animType: 'bus'
+      }
+    };
+
+    let activeVehicle = { ...TRANSIT_MODES.car };
+
+    let isMoving = false;
+    let currentSpeedKmh = 0.0;
+    let tripDistanceKm = 0.0;
+    let tripSeconds = 0;
+    let idleSeconds = 0;
+    let tickerInterval = null;
+
+    let realMap = null;
+    let livePolyline = null;
+    let currentMarker = null;
+    let routeCoords = [];
+    let lastPosition = null;
+
+    const SPEED_THRESHOLD_KMH = 3.2;
+    const JITTER_DISTANCE_METERS = 4.0;
+
+    function setTransitMode(modeKey) {
+      if (!TRANSIT_MODES[modeKey]) return;
+      activeVehicle = { ...TRANSIT_MODES[modeKey] };
+
+      // Update switcher buttons UI
+      ['scooty', 'bike', 'car', 'bus'].forEach(key => {
+        const btn = document.getElementById('btnMode_' + key);
+        if (!btn) return;
+        if (key === modeKey) {
+          btn.className = 'relative z-10 py-1.5 px-2 min-h-[44px] rounded-lg font-extrabold text-xs transition active:scale-95 flex items-center justify-center space-x-1.5 bg-gradient-to-r from-[#073B2E] via-[#0F6B4A] to-[#1E9E5A] text-white shadow-xs';
+          btn.style.backgroundColor = '#073B2E';
+        } else {
+          btn.className = 'relative z-10 py-1.5 px-2 min-h-[44px] rounded-lg font-bold text-xs transition active:scale-95 flex items-center justify-center space-x-1.5 bg-white text-[#5D7A6E] hover:text-[#073B2E] border border-[#D4E6DC]';
+          btn.style.backgroundColor = '#FFFFFF';
+        }
+      });
+
+      // Update Kinematic Vehicle Engine Card Badge & Theme immediately
+      if (typeof updateKinematicCardTheme === 'function') {
+        updateKinematicCardTheme(modeKey);
+      }
+
+      // Update vehicle card displays
+      const vTitle = document.getElementById('vehicleModelTitle');
+      if (vTitle) vTitle.innerText = activeVehicle.name;
+      const vCat = document.getElementById('vehicleCategoryBadge');
+      if (vCat) vCat.innerText = activeVehicle.category.toUpperCase();
+      const vSpecs = document.getElementById('vehicleSpecsLine');
+      if (vSpecs) vSpecs.innerText = activeVehicle.specs;
+      const vIcon = document.getElementById('detectedVehicleIcon');
+      if (vIcon) vIcon.innerText = activeVehicle.icon;
+      const vFactor = document.getElementById('emissionFactorDisplay');
+      if (vFactor) vFactor.innerText = `${activeVehicle.factor.toFixed(4)} kg CO₂e/km`;
+
+      // Update Mini Intensity Indicator Bar
+      const intensityBar = document.getElementById('emissionIntensityBar');
+      if (intensityBar) {
+        const ratio = Math.min(100, Math.round((activeVehicle.factor / 0.30) * 100));
+        intensityBar.style.width = ratio + '%';
+        if (activeVehicle.factor <= 0.001) intensityBar.style.backgroundColor = '#1E9E5A';
+        else if (activeVehicle.factor < 0.07) intensityBar.style.backgroundColor = '#3FA34D';
+        else if (activeVehicle.factor < 0.12) intensityBar.style.backgroundColor = '#F59E0B';
+        else intensityBar.style.backgroundColor = '#0F6B4A';
+      }
+
+      // Context strip border accent update
+      const contextStrip = document.getElementById('vehicleContextStrip');
+      if (contextStrip) {
+        let accentColor = '#0F6B4A';
+        if (modeKey === 'scooty') accentColor = '#F06A5B';
+        else if (modeKey === 'bike') accentColor = '#F2A900';
+        else if (modeKey === 'bus') accentColor = '#2F80ED';
+        contextStrip.style.borderLeftColor = accentColor;
+      }
+
+      const ledgerTitle = document.getElementById('ledgerCardTitle');
+      if (ledgerTitle) ledgerTitle.innerText = `${activeVehicle.name} Mode Active`;
+
+      // Update live emissions ticker immediately
+      updateEmissionsDisplay();
+    }
+
+    function updateSpeedArc(speed) {
+      const arc = document.getElementById('gaugeProgressArc');
+      if (arc) {
+        const max = activeVehicle.maxSpeed || 140;
+        const ratio = Math.min(1, Math.max(0, speed / max));
+        const totalLength = 314;
+        const offset = totalLength * (1 - ratio);
+        arc.style.strokeDashoffset = offset;
+      }
+    }
+
+    function updateEmissionsDisplay() {
+      const emissions = (tripDistanceKm * activeVehicle.factor).toFixed(2);
+      const carbonEl = document.getElementById('liveCarbon');
+      if (carbonEl) {
+        carbonEl.innerText = emissions;
+        const num = parseFloat(emissions);
+        if (num <= 0.0) {
+          carbonEl.style.color = '#1E9E5A'; // Calm, non-alarming green at 0
+        } else if (num < 0.5) {
+          carbonEl.style.color = '#3FA34D';
+        } else if (num < 1.5) {
+          carbonEl.style.color = '#F59E0B'; // Amber
+        } else {
+          carbonEl.style.color = '#D64545'; // Alert red
+        }
+      }
+
+      const pct = Math.min(100, Math.round((emissions / 5.0) * 100));
+      const cBar = document.getElementById('carbonBar');
+      if (cBar) cBar.style.width = pct + '%';
+      const cPct = document.getElementById('carbonPercentage');
+      if (cPct) cPct.innerText = `${pct}% of 5kg cap`;
+    }
+
+    function openReportModal() {
+      document.getElementById('repModel').innerText = activeVehicle.name;
+      document.getElementById('repCategory').innerText = activeVehicle.category;
+      document.getElementById('repFactor').innerText = `${activeVehicle.factor.toFixed(4)} kg CO₂e / km`;
+      document.getElementById('repDistance').innerText = `${tripDistanceKm.toFixed(2)} km`;
+      
+      const emitted = (tripDistanceKm * activeVehicle.factor).toFixed(2);
+      const baselineSaved = Math.max(0, (tripDistanceKm * (0.171 - activeVehicle.factor))).toFixed(2);
+      document.getElementById('repCarbon').innerText = `${emitted} kg`;
+      document.getElementById('repSaved').innerText = `${baselineSaved} kg`;
+      document.getElementById('repTimestamp').innerText = new Date().toLocaleString();
+
+      document.getElementById('reportModal').classList.add('open');
+    }
+
+    function closeReportModal() {
+      document.getElementById('reportModal').classList.remove('open');
+    }
+
+    function haversine(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    function initRealLeafletMap(lat, lng) {
+      if (realMap) {
+        realMap.setView([lat, lng], 17);
+        return;
+      }
+
+      realMap = L.map('realLeafletMap', {
+        zoomControl: false,
+        attributionControl: false
+      }).setView([lat, lng], 17);
+
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19
+      }).addTo(realMap);
+
+      livePolyline = L.polyline([], {
+        color: '#02493E',
+        weight: 5,
+        opacity: 0.9,
+        lineJoin: 'round'
+      }).addTo(realMap);
+
+      const customIcon = L.divIcon({
+        className: 'custom-live-marker',
+        html: `<div style="width: 16px; height: 16px; background: #02493E; border: 3px solid #fff; border-radius: 50%; box-shadow: 0 0 10px rgba(2,73,62,0.6);"></div>`,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
+      });
+
+      currentMarker = L.marker([lat, lng], { icon: customIcon }).addTo(realMap);
+    }
+
+    function recenterMap() {
+      if (realMap && lastPosition) {
+        realMap.setView([lastPosition.lat, lastPosition.lng], 17);
+      }
+    }
+
+    // ================= 1. SYSTEM BOOT / LOADING SEQUENCE =================
+    let loadingInterval = null;
+    let loadingProgress = 0;
+
+    function startLoadingSequence() {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('skipboot') === 'true' || urlParams.get('view') === 'dashboard') {
+        dismissLoadingScreen();
+        return;
+      }
+      const progressBar = document.getElementById('loadingProgressBar');
+      const percentText = document.getElementById('loadingPercentText');
+      const statusText = document.getElementById('loadingStatusText');
+      
+      const bootMessages = [
+        { at: 0, text: 'Initializing High-Precision GPS Engine...' },
+        { at: 25, text: 'Calibrating Certified IPCC & CPCB Standards...' },
+        { at: 55, text: 'Activating 60 FPS Real-Time Velocity Filter...' },
+        { at: 80, text: 'Establishing Encrypted Peer Connection...' },
+        { at: 95, text: 'System Calibrated & Ready.' }
+      ];
+
+      clearInterval(loadingInterval);
+      loadingInterval = setInterval(() => {
+        loadingProgress += Math.random() * 8 + 5;
+        if (loadingProgress >= 100) {
+          loadingProgress = 100;
+          clearInterval(loadingInterval);
+          if (progressBar) progressBar.style.width = '100%';
+          if (percentText) percentText.innerText = '100%';
+          if (statusText) statusText.innerText = 'System Online & Certified';
+          setTimeout(() => {
+            dismissLoadingScreen();
+          }, 450);
+          return;
+        }
+
+        if (progressBar) progressBar.style.width = `${loadingProgress}%`;
+        if (percentText) percentText.innerText = `${Math.round(loadingProgress)}%`;
+
+        for (let i = bootMessages.length - 1; i >= 0; i--) {
+          if (loadingProgress >= bootMessages[i].at) {
+            if (statusText) statusText.innerText = bootMessages[i].text;
+            break;
+          }
+        }
+      }, 70);
+    }
+
+    function dismissLoadingScreen() {
+      clearInterval(loadingInterval);
+      const screen = document.getElementById('loadingScreen');
+      if (!screen) return;
+      screen.style.transition = 'opacity 0.4s ease';
+      screen.style.opacity = '0';
+      screen.style.pointerEvents = 'none';
+      setTimeout(() => {
+        screen.classList.add('hidden');
+      }, 400);
+
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('view') === 'dashboard' || urlParams.get('autologin') === 'true') {
+        const login = document.getElementById('loginScreen');
+        if (login) login.classList.add('hidden');
+        setTimeout(() => {
+          if (realMap) realMap.invalidateSize();
+        }, 150);
+      }
+    }
+
+    // ================= 2. LUXURY CLIMATE-FINTECH AUTH CONTROLLER =================
+    let currentAuthMode = 'signin';
+
+    function switchAuthTab(mode) {
+      currentAuthMode = mode;
+      const pill = document.getElementById('authPillIndicator');
+      const btnIn = document.getElementById('tabBtnSignIn');
+      const btnUp = document.getElementById('tabBtnSignUp');
+      const formIn = document.getElementById('signInForm');
+      const formUp = document.getElementById('signUpForm');
+
+      if (mode === 'signin') {
+        if (pill) pill.style.left = '4px';
+        if (btnIn) { 
+          btnIn.className = 'relative z-10 py-1.5 flex items-center justify-center space-x-1.5 text-xs font-bold text-white transition min-h-[44px]'; 
+          btnIn.setAttribute('aria-selected', 'true');
+        }
+        if (btnUp) { 
+          btnUp.className = 'relative z-10 py-1.5 flex items-center justify-center space-x-1.5 text-xs font-semibold text-[#8EA99B] hover:text-white transition min-h-[44px]'; 
+          btnUp.setAttribute('aria-selected', 'false');
+        }
+        if (formIn) formIn.classList.remove('hidden');
+        if (formUp) formUp.classList.add('hidden');
+      } else {
+        if (pill) pill.style.left = 'calc(50% + 0px)';
+        if (btnIn) { 
+          btnIn.className = 'relative z-10 py-1.5 flex items-center justify-center space-x-1.5 text-xs font-semibold text-[#8EA99B] hover:text-white transition min-h-[44px]'; 
+          btnIn.setAttribute('aria-selected', 'false');
+        }
+        if (btnUp) { 
+          btnUp.className = 'relative z-10 py-1.5 flex items-center justify-center space-x-1.5 text-xs font-bold text-white transition min-h-[44px]'; 
+          btnUp.setAttribute('aria-selected', 'true');
+        }
+        if (formIn) formIn.classList.add('hidden');
+        if (formUp) formUp.classList.remove('hidden');
+      }
+    }
+
+    function togglePasswordVisibility(inputId, iconId) {
+      const input = document.getElementById(inputId);
+      const icon = document.getElementById(iconId);
+      if (!input || !icon) return;
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.innerHTML = `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+      } else {
+        input.type = 'password';
+        icon.innerHTML = `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+      }
+    }
+
+    function calculatePasswordStrength(password) {
+      let score = 0;
+      if (password.length >= 8) score++;
+      if (/[A-Z]/.test(password)) score++;
+      if (/[0-9]/.test(password)) score++;
+      if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score++;
+
+      const b1 = document.getElementById('strBar1');
+      const b2 = document.getElementById('strBar2');
+      const b3 = document.getElementById('strBar3');
+      const b4 = document.getElementById('strBar4');
+      const label = document.getElementById('strLabel');
+
+      const bars = [b1, b2, b3, b4];
+      bars.forEach(b => { if (b) b.className = 'h-1 rounded-full bg-[#E2E8F0] transition-colors duration-200'; });
+
+      if (score === 0) {
+        if (label) label.innerText = 'Password strength';
+        return;
+      }
+
+      let colorClass = 'bg-[#1DB954]';
+      let labelText = 'Strong & Secure';
+      if (score === 1) { colorClass = 'bg-[#EF4444]'; labelText = 'Weak'; }
+      else if (score === 2) { colorClass = 'bg-[#F59E0B]'; labelText = 'Fair'; }
+      else if (score === 3) { colorClass = 'bg-[#10B981]'; labelText = 'Good'; }
+
+      for (let i = 0; i < score; i++) {
+        if (bars[i]) bars[i].className = `h-1 rounded-full ${colorClass} transition-colors duration-200`;
+      }
+      if (label) label.innerText = labelText;
+    }
+
+    let audioCtx = null;
+    function playUiSound(type) {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const now = audioCtx.currentTime;
+        if (type === 'ctaPress') {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.frequency.setValueAtTime(320, now);
+          osc.frequency.exponentialRampToValueAtTime(140, now + 0.05);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.05);
+          osc.connect(gain); gain.connect(audioCtx.destination);
+          osc.start(now); osc.stop(now + 0.05);
+        } else if (type === 'chargeUp') {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(420, now);
+          osc.frequency.exponentialRampToValueAtTime(840, now + 0.22);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.22);
+          osc.connect(gain); gain.connect(audioCtx.destination);
+          osc.start(now); osc.stop(now + 0.22);
+        } else if (type === 'signatureUnlock') {
+          [523.25, 659.25, 783.99].forEach((freq, i) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + i * 0.04);
+            gain.gain.setValueAtTime(0.18, now + i * 0.04);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(now + i * 0.04); osc.stop(now + 0.35);
+          });
+        }
+      } catch (e) {}
+    }
+
+    function handleAuthSubmit(e, mode) {
+      if (e) e.preventDefault();
+      const btn = mode === 'signin' ? document.getElementById('authSubmitBtn') : document.getElementById('authRegBtn');
+      const btnText = document.getElementById('authBtnText');
+      const btnIcon = document.getElementById('authBtnIcon');
+
+      playUiSound('ctaPress');
+      setTimeout(() => playUiSound('chargeUp'), 120);
+
+      if (btnText) btnText.innerText = 'Verifying Node...';
+      if (btnIcon) {
+        btnIcon.classList.remove('hidden');
+        btnIcon.innerHTML = `<svg class="w-4 h-4 animate-spin text-[#052014]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="12"/></svg>`;
+      }
+
+      setTimeout(() => {
+        playUiSound('signatureUnlock');
+        if (btnText) btnText.innerText = '✓ Verified Carbon Node';
+        if (btnIcon) {
+          btnIcon.classList.remove('hidden');
+          btnIcon.innerHTML = `<svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>`;
+        }
+        if (btn) btn.className = 'relative overflow-hidden w-full h-12 mt-2 rounded-full bg-gradient-to-r from-[#10B981] to-[#059669] text-white font-extrabold text-sm shadow-xl shadow-[#10B981]/50 transition flex items-center justify-center space-x-2 scale-[1.02] cursor-pointer';
+
+        const email = document.getElementById('loginEmail')?.value || document.getElementById('regEmail')?.value || 'alex.mobility@ecotrack.org';
+        const parts = email.split('@')[0].split('.');
+        const firstName = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+        const initial = parts[1] ? ` ${parts[1].charAt(0).toUpperCase()}.` : '';
+        const compactName = `${firstName}${initial}`;
+        const nameDisplay = document.getElementById('headerUserName');
+        if (nameDisplay) nameDisplay.innerText = compactName;
+
+        setTimeout(() => {
+          completeAuthTransition();
+        }, 550);
+      }, 750);
+    }
+
+    function fillDemoAndLogin() {
+      const emailInput = document.getElementById('loginEmail');
+      const passInput = document.getElementById('loginPassword');
+      if (emailInput) emailInput.value = '';
+      if (passInput) passInput.value = '';
+
+      switchAuthTab('signin');
+
+      const demoEmail = 'alex.mobility@ecotrack.org';
+      const demoPass = 'EcoTracker2026!';
+      let idx = 0;
+
+      const typeInterval = setInterval(() => {
+        if (idx < demoEmail.length) {
+          if (emailInput) emailInput.value += demoEmail[idx];
+          idx++;
+        } else {
+          clearInterval(typeInterval);
+          if (passInput) passInput.value = demoPass;
+          handleAuthSubmit(null, 'signin');
+        }
+      }, 20);
+    }
+
+    function triggerBiometricLogin() {
+      const laser = document.getElementById('biometricLaser');
+      const label = document.getElementById('biometricLabel');
+      if (laser) laser.classList.remove('hidden');
+      if (label) label.innerText = 'Scanning...';
+
+      setTimeout(() => {
+        if (laser) laser.classList.add('hidden');
+        if (label) label.innerText = 'Use biometrics';
+        handleAuthSubmit(null, 'signin');
+      }, 1000);
+    }
+
+    function triggerGoogleLogin() {
+      const emailInput = document.getElementById('loginEmail');
+      const passInput = document.getElementById('loginPassword');
+      if (emailInput) emailInput.value = 'alex.morgan@gmail.com';
+      if (passInput) passInput.value = 'GoogleVerifiedOAuth#2026';
+      handleAuthSubmit(null, 'signin');
+    }
+
+    function triggerSocialLogin(provider) {
+      const emailInput = document.getElementById('loginEmail');
+      const passInput = document.getElementById('loginPassword');
+      if (emailInput) emailInput.value = `alex.morgan@${provider.toLowerCase()}.com`;
+      if (passInput) passInput.value = `${provider}OAuth#2026`;
+      handleAuthSubmit(null, 'signin');
+    }
+
+    function completeAuthTransition() {
+      const login = document.getElementById('loginScreen');
+      if (!login) return;
+      login.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+      login.style.opacity = '0';
+      login.style.transform = 'scale(0.98)';
+      setTimeout(() => {
+        login.classList.add('hidden');
+        if (realMap) {
+          realMap.invalidateSize();
+        }
+      }, 420);
+    }
+
+    function openLoginScreen() {
+      const login = document.getElementById('loginScreen');
+      if (!login) return;
+      login.classList.remove('hidden');
+      login.style.opacity = '0';
+      login.style.transform = 'scale(1)';
+      requestAnimationFrame(() => {
+        login.style.transition = 'opacity 0.4s ease';
+        login.style.opacity = '1';
+      });
+
+      // Reset CTA button
+      const btnText = document.getElementById('authBtnText');
+      const btnIcon = document.getElementById('authBtnIcon');
+      const btn = document.getElementById('authSubmitBtn');
+      if (btnText) btnText.innerText = 'Sign In →';
+      if (btnIcon) btnIcon.classList.add('hidden');
+      if (btn) btn.className = 'relative overflow-hidden w-full h-12 mt-2 rounded-full bg-gradient-to-r from-[#4ADE80] via-[#22C55E] to-[#10B981] text-[#052014] font-extrabold text-sm shadow-[0_8px_25px_rgba(34,197,94,0.45)] hover:shadow-[0_10px_30px_rgba(34,197,94,0.6)] active:scale-[0.98] transition flex items-center justify-center space-x-2 cursor-pointer';
+    }
+
+    function openIpccModal() {
+      const modal = document.getElementById('ipccLedgerModal');
+      if (!modal) return;
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeIpccModal(e) {
+      if (e && e.target !== e.currentTarget) return;
+      const modal = document.getElementById('ipccLedgerModal');
+      if (!modal) return;
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+
+        // ================= 1. QUANTUM GYROSCOPIC BOOT ANIMATION ENGINE =================
+    let bootCanvas = null;
+    let bootCtx = null;
+    let bootAngle = 0;
+    let bootAnimId = null;
+
+    function initBootCanvas() {
+      bootCanvas = document.getElementById('bootAnimCanvas');
+      if (!bootCanvas) return;
+      bootCtx = bootCanvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const rect = bootCanvas.getBoundingClientRect();
+      const size = Math.min(rect.width || 280, 280);
+      bootCanvas.width = size * dpr;
+      bootCanvas.height = size * dpr;
+      bootCtx.scale(dpr, dpr);
+
+      function renderBoot() {
+        const loadingEl = document.getElementById('loadingScreen');
+        if (!loadingEl || loadingEl.classList.contains('hidden') || loadingEl.style.display === 'none') {
+          if (bootAnimId) cancelAnimationFrame(bootAnimId);
+          return;
+        }
+
+        const width = size;
+        const height = size;
+        const cx = width / 2;
+        const cy = height / 2;
+
+        bootCtx.clearRect(0, 0, width, height);
+
+        // 1. Ambient Holographic Emerald Core Glow
+        const grad = bootCtx.createRadialGradient(cx, cy, 10, cx, cy, cx * 0.95);
+        grad.addColorStop(0, 'rgba(52, 211, 153, 0.28)');
+        grad.addColorStop(0.5, 'rgba(16, 185, 129, 0.12)');
+        grad.addColorStop(1, 'rgba(2, 24, 17, 0)');
+        bootCtx.fillStyle = grad;
+        bootCtx.beginPath();
+        bootCtx.arc(cx, cy, cx * 0.95, 0, Math.PI * 2);
+        bootCtx.fill();
+
+        // 2. Outer Precision Navigational Ring with Coordinate Ticks
+        bootCtx.save();
+        bootCtx.translate(cx, cy);
+        bootCtx.rotate(bootAngle * 0.5);
+        bootCtx.strokeStyle = 'rgba(52, 211, 153, 0.40)';
+        bootCtx.lineWidth = 1.2;
+        bootCtx.setLineDash([3, 9]);
+        bootCtx.beginPath();
+        bootCtx.arc(0, 0, cx * 0.88, 0, Math.PI * 2);
+        bootCtx.stroke();
+        bootCtx.restore();
+
+        // 3. Middle Gyroscopic Counter-Rotating Kinetic Arcs
+        bootCtx.save();
+        bootCtx.translate(cx, cy);
+        bootCtx.rotate(-bootAngle * 1.1);
+        bootCtx.setLineDash([]);
+        bootCtx.lineWidth = 3;
+        bootCtx.lineCap = 'round';
+        
+        // Arc 1 - Luminous Mint
+        bootCtx.strokeStyle = '#34D399';
+        bootCtx.beginPath();
+        bootCtx.arc(0, 0, cx * 0.72, 0, Math.PI * 0.8);
+        bootCtx.stroke();
+
+        // Arc 2 - Electric Emerald
+        bootCtx.strokeStyle = 'rgba(16, 185, 129, 0.65)';
+        bootCtx.beginPath();
+        bootCtx.arc(0, 0, cx * 0.72, Math.PI * 1.05, Math.PI * 1.85);
+        bootCtx.stroke();
+        bootCtx.restore();
+
+        // 4. Inner Orbiting Modality Photon Satellites (4 Satellites: Scooty, Bike, Car, Bus)
+        for (let i = 0; i < 4; i++) {
+          const a = bootAngle * 1.6 + (i * Math.PI * 2) / 4;
+          const px = cx + Math.cos(a) * (cx * 0.56);
+          const py = cy + Math.sin(a) * (cx * 0.56);
+
+          bootCtx.beginPath();
+          bootCtx.arc(px, py, 3.2, 0, Math.PI * 2);
+          bootCtx.fillStyle = '#FFFFFF';
+          bootCtx.shadowColor = '#34D399';
+          bootCtx.shadowBlur = 12;
+          bootCtx.fill();
+        }
+
+        bootAngle += 0.022;
+        bootAnimId = requestAnimationFrame(renderBoot);
+      }
+      renderBoot();
+    }
+
+    // ================= 2. LIVING SUNLIT SAGE BIOSPHERE CANVAS FOR LOGIN SCREEN =================
+    let ambientCanvas = null;
+    let ambientCtx = null;
+    let ambientParticles = [];
+    let ambientAnimId = null;
+    let mousePos = { x: 0.5, y: 0.5 };
+
+    function initAmbientBiosphere() {
+      ambientCanvas = document.getElementById('ambientBiosphereCanvas');
+      if (!ambientCanvas) return;
+      ambientCtx = ambientCanvas.getContext('2d');
+
+      function resize() {
+        if (!ambientCanvas) return;
+        ambientCanvas.width = window.innerWidth;
+        ambientCanvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      ambientParticles = [];
+      const count = 35;
+      for (let i = 0; i < count; i++) {
+        ambientParticles.push({
+          x: Math.random() * (ambientCanvas.width || 400),
+          y: Math.random() * (ambientCanvas.height || 800),
+          radius: Math.random() * 2.8 + 1.2,
+          alpha: Math.random() * 0.5 + 0.35,
+          speedY: -(Math.random() * 0.35 + 0.15),
+          speedX: (Math.random() - 0.5) * 0.3,
+          isGold: Math.random() > 0.6
+        });
+      }
+
+      window.addEventListener('mousemove', (e) => {
+        mousePos.x = e.clientX / window.innerWidth;
+        mousePos.y = e.clientY / window.innerHeight;
+      });
+
+      let time = 0;
+      function render() {
+        const loginEl = document.getElementById('loginScreen');
+        if (!loginEl || loginEl.classList.contains('hidden') || loginEl.style.display === 'none') {
+          ambientAnimId = requestAnimationFrame(render);
+          return;
+        }
+
+        const w = ambientCanvas.width;
+        const h = ambientCanvas.height;
+        ambientCtx.clearRect(0, 0, w, h);
+
+        const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (!prefersReduced) time += 0.01;
+
+        // 1. Drifting Fresh Spring Aurora Bloom 1 (Soft Mint)
+        const b1x = w * (0.25 + Math.sin(time * 0.7) * 0.15 + (mousePos.x - 0.5) * 0.08);
+        const b1y = h * (0.3 + Math.cos(time * 0.5) * 0.12);
+        const g1 = ambientCtx.createRadialGradient(b1x, b1y, 20, b1x, b1y, Math.min(w, h) * 0.6);
+        g1.addColorStop(0, 'rgba(16, 185, 129, 0.22)');
+        g1.addColorStop(0.6, 'rgba(110, 231, 183, 0.10)');
+        g1.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ambientCtx.fillStyle = g1;
+        ambientCtx.fillRect(0, 0, w, h);
+
+        // 2. Drifting Morning Sun Aura Bloom 2 (Golden Sunlight / Emerald Dew)
+        const b2x = w * (0.8 + Math.cos(time * 0.6) * 0.12);
+        const b2y = h * (0.7 + Math.sin(time * 0.8) * 0.14);
+        const g2 = ambientCtx.createRadialGradient(b2x, b2y, 10, b2x, b2y, Math.min(w, h) * 0.55);
+        g2.addColorStop(0, 'rgba(245, 158, 11, 0.12)');
+        g2.addColorStop(0.5, 'rgba(52, 211, 153, 0.12)');
+        g2.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ambientCtx.fillStyle = g2;
+        ambientCtx.fillRect(0, 0, w, h);
+
+        // 3. Elegant Topographic Isobar Elevation Curves
+        ambientCtx.save();
+        ambientCtx.strokeStyle = 'rgba(15, 107, 74, 0.09)';
+        ambientCtx.lineWidth = 1.3;
+        for (let j = 0; j < 4; j++) {
+          ambientCtx.beginPath();
+          const baseHeight = h * (0.2 + j * 0.2);
+          for (let x = 0; x <= w; x += 25) {
+            const y = baseHeight + Math.sin(x * 0.005 + time + j * 1.5) * 20;
+            if (x === 0) ambientCtx.moveTo(x, y);
+            else ambientCtx.lineTo(x, y);
+          }
+          ambientCtx.stroke();
+        }
+        ambientCtx.restore();
+
+        // 4. Floating Bioluminescent Sunlit Chlorophyll Pollen Motes
+        for (let p of ambientParticles) {
+          if (!prefersReduced) {
+            p.y += p.speedY;
+            p.x += p.speedX;
+            if (p.y < -10) {
+              p.y = h + 10;
+              p.x = Math.random() * w;
+            }
+            if (p.x < -10) p.x = w + 10;
+            if (p.x > w + 10) p.x = -10;
+          }
+
+          ambientCtx.save();
+          ambientCtx.beginPath();
+          ambientCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          if (p.isGold) {
+            ambientCtx.fillStyle = `rgba(245, 158, 11, ${p.alpha * 0.8})`;
+            ambientCtx.shadowColor = '#F59E0B';
+          } else {
+            ambientCtx.fillStyle = `rgba(16, 185, 129, ${p.alpha})`;
+            ambientCtx.shadowColor = '#10B981';
+          }
+          ambientCtx.shadowBlur = 8;
+          ambientCtx.fill();
+          ambientCtx.restore();
+        }
+
+        ambientAnimId = requestAnimationFrame(render);
+      }
+      render();
+    }
+
+    // Prismatic Glass Mouse Refraction
+    function handleAuthCardMouseMove(e) {
+      const card = document.getElementById('authCard');
+      if (!card) return;
+      const rect = card.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 100;
+      const y = ((e.clientY - rect.top) / rect.height) * 100;
+      card.style.setProperty('--mouse-x', `${x}%`);
+      card.style.setProperty('--mouse-y', `${y}%`);
+    }
+
+    function handleAuthCardMouseLeave() {
+      const card = document.getElementById('authCard');
+      if (!card) return;
+      card.style.setProperty('--mouse-x', '50%');
+      card.style.setProperty('--mouse-y', '30%');
+    }
+
+    // Interactive Commute Estimator Drawer
+    function toggleCommuteEstimator() {
+      const drawer = document.getElementById('commuteEstimatorDrawer');
+      const chevron = document.getElementById('estimatorToggleChevron');
+      if (!drawer) return;
+      drawer.classList.toggle('hidden');
+      if (chevron) {
+        chevron.style.transform = drawer.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+      }
+    }
+
+    function updateCommuteSavings(km) {
+      km = parseFloat(km) || 15;
+      const distEl = document.getElementById('commuteDistanceVal');
+      const kgEl = document.getElementById('estSavingsKg');
+      const treeEl = document.getElementById('estSavingsTrees');
+      
+      if (distEl) distEl.innerText = `${km} km`;
+      // Car baseline (0.171) vs green commute transition (0.052)
+      // 250 work days per year round-trip (x2)
+      const annualKg = Math.round(km * 2 * 250 * (0.171 - 0.052));
+      const trees = Math.max(1, Math.round(annualKg / 22));
+
+      if (kgEl) kgEl.innerText = `~${annualKg.toLocaleString()} kg`;
+      if (treeEl) treeEl.innerText = `~${trees} trees`;
+    }
+
+    // Live global counter ticker
+    let globalKgLogged = 1482914;
+    setInterval(() => {
+      globalKgLogged += Math.floor(Math.random() * 3) + 1;
+      const counterEl = document.getElementById('liveGlobalCounter');
+      if (counterEl) {
+        counterEl.innerText = globalKgLogged.toLocaleString();
+      }
+    }, 3200);
+
+    // Initialize both animation engines once ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        initBootCanvas();
+        initAmbientBiosphere();
+      });
+    } else {
+      initBootCanvas();
+      initAmbientBiosphere();
+    }
+
+    // ================= 3. REAL-TIME HARDWARE GPS & MOBILITY ENGINE =================
+    let hasGpsInitialized = false;
+
+    function resetCurrentTrip() {
+      tripDistanceKm = 0.0;
+      tripSeconds = 0;
+      idleSeconds = 0;
+      currentSpeedKmh = 0.0;
+      routeCoords = [];
+      if (livePolyline) livePolyline.setLatLngs([]);
+      document.getElementById('liveSpeed').innerText = '0.0';
+      updateSpeedArc(0.0);
+      document.getElementById('liveDistance').innerText = '0.00';
+      document.getElementById('liveDuration').innerText = '00:00';
+      updateEmissionsDisplay();
+      document.getElementById('speedFilterStatus').innerText = 'Stationary Filtered';
+      document.getElementById('speedFilterStatus').className = 'text-[8px] bg-[#EDF2EE] text-[#5A736A] px-1.5 py-0.5 rounded font-bold border border-[#DCECE1]';
+    }
+
+    function startContinuousBackgroundService() {
+      if (!navigator.geolocation) {
+        document.getElementById('speedFilterStatus').innerText = 'GPS Unavailable';
+        return;
+      }
+
+      // Initial quick location lock for map centering
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          initRealLeafletMap(lat, lng);
+          document.getElementById('liveCoordinatesDisplay').innerText = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        },
+        () => {
+          initRealLeafletMap(20.0131, 73.7617);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      );
+
+      // Continuous high-precision hardware GPS tracker
+      navigator.geolocation.watchPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          const timestamp = pos.timestamp || Date.now();
+
+          document.getElementById('liveCoordinatesDisplay').innerText = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+
+          // 1. FIRST FIX / COLD START GUARD:
+          // Never calculate delta against uninitialized or fallback coordinates!
+          if (!hasGpsInitialized || !lastPosition) {
+            hasGpsInitialized = true;
+            lastPosition = { lat, lng, time: timestamp };
+            if (realMap) realMap.setView([lat, lng], 17);
+            if (currentMarker) currentMarker.setLatLng([lat, lng]);
+            document.getElementById('speedFilterStatus').innerText = 'GPS Locked • Ready';
+            document.getElementById('speedFilterStatus').className = 'text-[8px] bg-[#E8F5E9] text-[#02493E] px-1.5 py-0.5 rounded font-bold border border-[#C8E6C9]';
+            return;
+          }
+
+          // 2. DELTA & ACCURACY CALCULATIONS:
+          const dtSeconds = Math.max(0.001, (timestamp - lastPosition.time) / 1000.0);
+          const deltaKm = haversine(lastPosition.lat, lastPosition.lng, lat, lng);
+          const deltaMeters = deltaKm * 1000.0;
+
+          // 3. REJECT TELEPORTATION & SATELLITE ACQUISITION GLITCHES:
+          // If jump is > 300 meters or calculated instantaneous speed would exceed 160 km/h:
+          const calculatedSpeedKmh = dtSeconds >= 0.5 ? (deltaKm / (dtSeconds / 3600.0)) : 0.0;
+          if (deltaMeters > 300.0 || calculatedSpeedKmh > 160.0) {
+            console.warn('Rejected GPS jump glitch:', deltaMeters.toFixed(1), 'm in', dtSeconds.toFixed(2), 's');
+            // Re-sync position to new fix without accumulating bad distance or speed
+            lastPosition = { lat, lng, time: timestamp };
+            if (currentMarker) currentMarker.setLatLng([lat, lng]);
+            if (realMap) realMap.panTo([lat, lng]);
+            return;
+          }
+
+          // 4. PREFER NATIVE HARDWARE DOPPLER SPEED:
+          let rawSpeedKmh = 0.0;
+          if (pos.coords.speed !== null && !isNaN(pos.coords.speed) && pos.coords.speed >= 0) {
+            rawSpeedKmh = pos.coords.speed * 3.6;
+          } else if (dtSeconds >= 0.8 && deltaMeters > JITTER_DISTANCE_METERS) {
+            rawSpeedKmh = calculatedSpeedKmh;
+          }
+
+          // Cap realistic upper limit
+          rawSpeedKmh = Math.min(160.0, Math.max(0.0, rawSpeedKmh));
+
+          // 5. JITTER / STATIONARY FILTERING:
+          if (deltaMeters < JITTER_DISTANCE_METERS || rawSpeedKmh < SPEED_THRESHOLD_KMH) {
+            currentSpeedKmh = 0.0;
+            isMoving = false;
+            document.getElementById('speedFilterStatus').innerText = 'Stationary Filtered';
+            document.getElementById('speedFilterStatus').className = 'text-[8px] bg-[#EDF2EE] text-[#5A736A] px-1.5 py-0.5 rounded font-bold border border-[#DCECE1]';
+          } else {
+            currentSpeedKmh = rawSpeedKmh;
+            isMoving = true;
+            tripDistanceKm += (deltaMeters / 1000.0);
+            idleSeconds = 0;
+
+            document.getElementById('speedFilterStatus').innerText = 'Moving: Telemetry Active';
+            document.getElementById('speedFilterStatus').className = 'text-[8px] bg-[#E8F5E9] text-[#02493E] px-1.5 py-0.5 rounded font-bold border border-[#C8E6C9]';
+
+            routeCoords.push([lat, lng]);
+            if (livePolyline) livePolyline.setLatLngs(routeCoords);
+          }
+
+          // 6. IMMEDIATE TELEMETRY UPDATE:
+          document.getElementById('liveSpeed').innerText = currentSpeedKmh.toFixed(1);
+          updateSpeedArc(currentSpeedKmh);
+          document.getElementById('liveDistance').innerText = tripDistanceKm.toFixed(2);
+          updateEmissionsDisplay();
+
+          lastPosition = { lat, lng, time: timestamp };
+          if (currentMarker) currentMarker.setLatLng([lat, lng]);
+          if (realMap && isMoving) realMap.panTo([lat, lng]);
+        },
+        (err) => console.warn('Geolocation watch error:', err),
+        { enableHighAccuracy: true, maximumAge: 0 }
+      );
+
+      startTicker();
+    }
+
+    function startTicker() {
+      clearInterval(tickerInterval);
+      tickerInterval = setInterval(() => {
+        if (isMoving) {
+          tripSeconds++;
+          idleSeconds = 0;
+        } else {
+          idleSeconds++;
+          if (tripDistanceKm > 0.1 && idleSeconds > 60) {
+            autoSaveTrip();
+          }
+        }
+
+        const mins = Math.floor(tripSeconds / 60).toString().padStart(2, '0');
+        const secs = (tripSeconds % 60).toString().padStart(2, '0');
+        const durEl = document.getElementById('liveDuration');
+        if (durEl) durEl.innerText = `${mins}:${secs}`;
+      }, 1000);
+    }
+
+    function autoSaveTrip() {
+      const container = document.getElementById('autoTripHistory');
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const emissions = (tripDistanceKm * activeVehicle.factor).toFixed(2);
+      
+      const newCard = document.createElement('div');
+      newCard.className = 'brand-card p-2.5 flex items-center justify-between border-l-4 border-l-[#02493E]';
+      newCard.innerHTML = `
+        <div class="flex items-center space-x-2">
+          <span class="text-base">${activeVehicle.icon}</span>
+          <div>
+            <h4 class="text-[10.5px] font-bold text-[#02493E]">${activeVehicle.name}</h4>
+            <p class="text-[8.5px] text-[#5A736A]">${timeStr} • ${tripDistanceKm.toFixed(2)} km • ${emissions} kg CO₂</p>
+          </div>
+        </div>
+        <div class="text-right">
+          <span class="text-[10.5px] font-bold text-[#122B24] block">${tripDistanceKm.toFixed(2)} km</span>
+          <span class="text-[8.5px] font-bold text-[#E53935]">${emissions} kg</span>
+        </div>
+      `;
+      container.prepend(newCard);
+
+      tripDistanceKm = 0.0;
+      tripSeconds = 0;
+      idleSeconds = 0;
+      routeCoords = [];
+      if (livePolyline) livePolyline.setLatLngs([]);
+    }
+
+    // =========================================================================
+    // LUXURY KINEMATIC VEHICLE ENGINE (Automotive-Grade 60FPS Parallax Canvas)
+    // =========================================================================
+    const KINEMATIC_TOKENS = {
+      scooty: {
+        name: 'SCOOTY',
+        icon: '🛵',
+        primary: '#00BFA5',
+        secondary: '#64FFDA',
+        sky: ['#E0F7FA', '#F1FBF8', '#FFFFFF'],
+        sunGlow: 'rgba(0, 191, 165, 0.25)',
+        bodyGrad: ['#48DFBC', '#00A88F', '#00796B'],
+        highlight: 'rgba(224, 247, 250, 0.70)',
+        underside: '#004D40',
+        glass: ['rgba(178, 223, 219, 0.65)', 'rgba(128, 203, 196, 0.25)'],
+        glare: 'rgba(255, 255, 255, 0.85)',
+        headlightBeam: 'rgba(224, 242, 241, 0.35)',
+        taillight: '#FF5252',
+        road: '#D8ECE4',
+        laneMarker: 'rgba(0, 191, 165, 0.85)',
+        particles: 'rgba(0, 191, 165, 0.35)',
+        speedLine: 'rgba(0, 191, 165, 0.35)',
+        cardBg: 'linear-gradient(135deg, #FCFEFD 0%, #F5FAF7 100%)',
+        border: '#D6EDE3',
+        shadow: '0 10px 28px -4px rgba(0, 77, 64, 0.09)'
+      },
+      car: {
+        name: 'CAR',
+        icon: '🚗',
+        primary: '#2E7D32',
+        secondary: '#43A047',
+        sky: ['#E8F5E9', '#F3FAF4', '#FFFFFF'],
+        sunGlow: 'rgba(67, 160, 71, 0.25)',
+        bodyGrad: ['#4CAF50', '#1B5E20', '#0A3D14'],
+        highlight: 'rgba(200, 230, 201, 0.75)',
+        underside: '#06230C',
+        glass: ['rgba(165, 214, 167, 0.65)', 'rgba(129, 199, 132, 0.25)'],
+        glare: 'rgba(255, 255, 255, 0.85)',
+        headlightBeam: 'rgba(232, 245, 233, 0.40)',
+        taillight: '#FF1744',
+        road: '#D9EADB',
+        laneMarker: 'rgba(67, 160, 71, 0.85)',
+        particles: 'rgba(67, 160, 71, 0.35)',
+        speedLine: 'rgba(67, 160, 71, 0.35)',
+        cardBg: 'linear-gradient(135deg, #FCFEFD 0%, #F4F9F5 100%)',
+        border: '#D5E8D8',
+        shadow: '0 10px 28px -4px rgba(2, 73, 62, 0.10)'
+      },
+      bike: {
+        name: 'BIKE',
+        icon: '🏍️',
+        primary: '#FF6F00',
+        secondary: '#FFAB00',
+        sky: ['#FFF3E0', '#FFF9F2', '#FFFFFF'],
+        sunGlow: 'rgba(255, 111, 0, 0.25)',
+        bodyGrad: ['#FFB300', '#E65100', '#BF360C'],
+        highlight: 'rgba(255, 224, 130, 0.80)',
+        underside: '#3E1700',
+        glass: ['rgba(255, 224, 178, 0.65)', 'rgba(255, 204, 128, 0.25)'],
+        glare: 'rgba(255, 255, 255, 0.85)',
+        headlightBeam: 'rgba(255, 248, 225, 0.40)',
+        taillight: '#FF3D00',
+        road: '#EADFD4',
+        laneMarker: 'rgba(255, 111, 0, 0.85)',
+        particles: 'rgba(255, 111, 0, 0.35)',
+        speedLine: 'rgba(255, 111, 0, 0.35)',
+        cardBg: 'linear-gradient(135deg, #FFFDFB 0%, #FAF6F2 100%)',
+        border: '#EFE2D6',
+        shadow: '0 10px 28px -4px rgba(121, 51, 0, 0.11)'
+      },
+      bus: {
+        name: 'BUS',
+        icon: '🚌',
+        primary: '#0288D1',
+        secondary: '#29B6F6',
+        sky: ['#E1F5FE', '#F0F9FD', '#FFFFFF'],
+        sunGlow: 'rgba(2, 136, 209, 0.25)',
+        bodyGrad: ['#4FC3F7', '#0277BD', '#01579B'],
+        highlight: 'rgba(179, 229, 252, 0.75)',
+        underside: '#002F6C',
+        glass: ['rgba(129, 212, 250, 0.65)', 'rgba(79, 195, 247, 0.25)'],
+        glare: 'rgba(255, 255, 255, 0.85)',
+        headlightBeam: 'rgba(225, 245, 254, 0.40)',
+        taillight: '#FF1744',
+        road: '#D6E4EB',
+        laneMarker: 'rgba(2, 136, 209, 0.85)',
+        particles: 'rgba(2, 136, 209, 0.35)',
+        speedLine: 'rgba(2, 136, 209, 0.35)',
+        cardBg: 'linear-gradient(135deg, #FAFDFF 0%, #F2F8FB 100%)',
+        border: '#D1E5EE',
+        shadow: '0 10px 28px -4px rgba(1, 54, 84, 0.10)'
+      }
+    };
+
+    const canvas = document.getElementById('vehicleCanvas');
+    const ctx = canvas.getContext('2d');
+    const kinematicCard = document.getElementById('kinematicCard');
+
+    let currentModuleKey = 'car';
+    let prevModuleKey = 'car';
+    let moduleTransitionProgress = 1.0; // 0.0 -> 1.0 cross-fade
+
+    let wheelAngle = 0.0;
+    let parallaxProgress = 0.0;
+    let lastRenderTime = performance.now();
+
+    function updateKinematicCardTheme(modeKey) {
+      if (!KINEMATIC_TOKENS[modeKey]) return;
+      if (modeKey !== currentModuleKey) {
+        prevModuleKey = currentModuleKey;
+        currentModuleKey = modeKey;
+        moduleTransitionProgress = 0.0; // trigger 350ms smooth crossfade
+      }
+
+      const t = KINEMATIC_TOKENS[modeKey];
+      if (kinematicCard) {
+        kinematicCard.style.background = t.cardBg;
+        kinematicCard.style.borderColor = t.border;
+        kinematicCard.style.boxShadow = t.shadow;
+      }
+      const dot = document.getElementById('enginePulseDot');
+      if (dot) dot.style.backgroundColor = t.primary;
+
+      const badge = document.getElementById('engineModuleBadge');
+      if (badge) {
+        badge.style.backgroundColor = `${t.primary}1A`;
+        badge.style.borderColor = `${t.primary}4D`;
+        badge.style.color = t.primary;
+      }
+      const badgeIcon = document.getElementById('engineModuleIcon');
+      if (badgeIcon) badgeIcon.innerText = t.icon;
+      const badgeName = document.getElementById('engineModuleName');
+      if (badgeName) badgeName.innerText = t.name;
+    }
+
+    // Interactive Tap Feedback
+    if (kinematicCard) {
+      kinematicCard.addEventListener('click', () => {
+        kinematicCard.style.transform = 'scale(1.025)';
+        kinematicCard.style.borderColor = KINEMATIC_TOKENS[currentModuleKey].primary;
+        setTimeout(() => {
+          kinematicCard.style.transform = 'scale(1.0)';
+          kinematicCard.style.borderColor = KINEMATIC_TOKENS[currentModuleKey].border;
+        }, 250);
+      });
+    }
+
+    function resizeCanvasForHighDPI() {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      const targetW = rect.width || 360;
+      const targetH = rect.height || 110;
+
+      if (canvas.width !== Math.round(targetW * dpr) || canvas.height !== Math.round(targetH * dpr)) {
+        canvas.width = Math.round(targetW * dpr);
+        canvas.height = Math.round(targetH * dpr);
+      }
+    }
+
+    window.addEventListener('resize', resizeCanvasForHighDPI);
+    resizeCanvasForHighDPI();
+
+    function renderDynamicAnimation() {
+      resizeCanvasForHighDPI();
+      const now = performance.now();
+      const dt = Math.min(0.1, (now - lastRenderTime) / 1000.0);
+      lastRenderTime = now;
+      // Guarantee currentModuleKey always tracks activeVehicle
+      const activeKey = (activeVehicle && (activeVehicle.animType || activeVehicle.id)) || 'car';
+      if (activeKey !== currentModuleKey) {
+        updateKinematicCardTheme(activeKey);
+      }
+
+      if (moduleTransitionProgress < 1.0) {
+        moduleTransitionProgress = Math.min(1.0, moduleTransitionProgress + (dt / 0.25));
+      }
+
+      const dpr = window.devicePixelRatio || 1;
+      const logicalW = canvas.width / dpr;
+      const logicalH = canvas.height / dpr;
+
+      ctx.save();
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, logicalW, logicalH);
+
+      const moving = isMoving && currentSpeedKmh > 0.0;
+      const speed = moving ? Math.max(10.0, currentSpeedKmh) : 0.0;
+
+      // Update telemetry HUD speed pill
+      const hudSpeed = document.getElementById('engineHudSpeed');
+      if (hudSpeed) hudSpeed.innerText = Math.round(currentSpeedKmh);
+
+      // Dynamics: Wheel rotation & parallax offset
+      const wheelOmega = (speed > 0 ? speed * 0.28 * dt * 10.0 : dt * 0.5);
+      wheelAngle = (wheelAngle + wheelOmega) % (Math.PI * 2);
+
+      const roadV = (speed > 0 ? (speed / 70.0) * dt : dt * 0.04);
+      parallaxProgress = (parallaxProgress + roadV) % 1.0;
+
+      const tokens = KINEMATIC_TOKENS[currentModuleKey] || KINEMATIC_TOKENS.car;
+      const roadY = logicalH * 0.74;
+
+      const timeSec = now / 1000.0;
+      const idleBob = Math.sin(timeSec * Math.PI * 2.2) * (moving ? 2.2 : 1.4);
+      const taillightPulse = Math.sin(timeSec * Math.PI * 3.5) * 0.5 + 0.5;
+      const glareSweepPhase = (timeSec * 0.20) % 1.0;
+
+      // 1. Render Layered Parallax Environment
+      drawParallaxEnvironment(ctx, logicalW, logicalH, roadY, tokens, parallaxProgress, idleBob, moving);
+
+      // 2. Render Active Vehicle with Micro-Bounce & Lighting
+      const vehicleCenterX = logicalW * 0.48;
+      const vehicleCenterY = roadY - 4 + idleBob;
+
+      ctx.save();
+      if (moduleTransitionProgress < 1.0) {
+        // Smooth cross-fade transition between modules
+        ctx.globalAlpha = 1.0 - moduleTransitionProgress;
+        drawVehicleByModule(ctx, prevModuleKey, vehicleCenterX, vehicleCenterY, wheelAngle, taillightPulse, glareSweepPhase);
+        ctx.globalAlpha = moduleTransitionProgress;
+      }
+      drawVehicleByModule(ctx, currentModuleKey, vehicleCenterX, vehicleCenterY, wheelAngle, taillightPulse, glareSweepPhase);
+      ctx.restore();
+
+      ctx.restore();
+      requestAnimationFrame(renderDynamicAnimation);
+    }
+
+    // -------------------------------------------------------------------------
+    // PARALLAX ENVIRONMENT (Sky, Sun, Skyline, Hills, Road, Particles, Contact)
+    // -------------------------------------------------------------------------
+    function drawParallaxEnvironment(ctx, w, h, roadY, tokens, progress, idleBob, moving) {
+      // 1. Sky Gradient
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
+      skyGrad.addColorStop(0, tokens.sky[0]);
+      skyGrad.addColorStop(0.5, tokens.sky[1]);
+      skyGrad.addColorStop(1, tokens.sky[2]);
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      // 2. Ambient Radiant Sun Glow Orb
+      const sunX = w * 0.82;
+      const sunY = h * 0.22;
+      const sunGlow = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 75);
+      sunGlow.addColorStop(0, tokens.sunGlow);
+      sunGlow.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = sunGlow;
+      ctx.beginPath();
+      ctx.arc(sunX, sunY, 75, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 3. Parallax Skyline (0.12x)
+      const skylineOffset = (progress * 0.12 * w) % w;
+      ctx.fillStyle = tokens.primary + '12';
+      ctx.beginPath();
+      ctx.moveTo(0, roadY);
+      const bWidths = [18, 26, 15, 34, 22, 28, 16, 24];
+      const bHeights = [28, 46, 22, 52, 32, 42, 24, 38];
+      for (let loop = -1; loop <= 2; loop++) {
+        let curX = (loop * w) - skylineOffset;
+        for (let i = 0; i < bWidths.length; i++) {
+          const bw = bWidths[i];
+          const bh = bHeights[i];
+          if (curX + bw > -10 && curX < w + 10) {
+            ctx.lineTo(curX, roadY);
+            ctx.lineTo(curX, roadY - bh);
+            ctx.lineTo(curX + bw, roadY - bh);
+            ctx.lineTo(curX + bw, roadY);
+          }
+          curX += bw + 8;
+        }
+      }
+      ctx.lineTo(w, roadY);
+      ctx.closePath();
+      ctx.fill();
+
+      // 4. Parallax Rolling Hills (0.30x)
+      const hillsOffset = (progress * 0.30 * w) % w;
+      ctx.fillStyle = tokens.primary + '1F';
+      ctx.beginPath();
+      ctx.moveTo(0, roadY);
+      for (let x = -w - hillsOffset; x < w * 2.5; x += w) {
+        ctx.lineTo(x, roadY - 14);
+        ctx.quadraticCurveTo(x + (w * 0.25), roadY - 30, x + (w * 0.5), roadY - 16);
+        ctx.quadraticCurveTo(x + (w * 0.75), roadY - 6, x + w, roadY - 14);
+      }
+      ctx.lineTo(w, roadY);
+      ctx.closePath();
+      ctx.fill();
+
+      // 5. Road Bed with Edge Fading
+      const roadGrad = ctx.createLinearGradient(0, roadY, w, roadY);
+      roadGrad.addColorStop(0.0, 'rgba(216, 236, 228, 0)');
+      roadGrad.addColorStop(0.12, tokens.road);
+      roadGrad.addColorStop(0.88, tokens.road);
+      roadGrad.addColorStop(1.0, 'rgba(216, 236, 228, 0)');
+      ctx.fillStyle = roadGrad;
+      ctx.fillRect(0, roadY, w, h - roadY);
+
+      // Glowing Top Edge of Road
+      const edgeGrad = ctx.createLinearGradient(0, roadY, w, roadY);
+      edgeGrad.addColorStop(0.0, 'rgba(0,0,0,0)');
+      edgeGrad.addColorStop(0.15, tokens.primary + '4D');
+      edgeGrad.addColorStop(0.85, tokens.primary + '4D');
+      edgeGrad.addColorStop(1.0, 'rgba(0,0,0,0)');
+      ctx.strokeStyle = edgeGrad;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(0, roadY);
+      ctx.lineTo(w, roadY);
+      ctx.stroke();
+
+      // Glowing Dashed Lane Markers (1.0x Ground Speed)
+      ctx.strokeStyle = tokens.laneMarker;
+      ctx.lineWidth = 2.4;
+      ctx.lineCap = 'round';
+      const dashWidth = 18;
+      const dashGap = 20;
+      const cycle = dashWidth + dashGap;
+      const dashOffset = (progress * cycle) % cycle;
+      for (let x = -dashWidth - dashOffset; x < w + dashWidth; x += cycle) {
+        if (x + dashWidth > 15 && x < w - 15) {
+          const edgeAlpha = (x < 60) ? (x / 60) : (x > w - 60 ? (w - x) / 60 : 1.0);
+          ctx.globalAlpha = Math.max(0, Math.min(1, edgeAlpha));
+          ctx.beginPath();
+          ctx.moveTo(x, roadY + 8);
+          ctx.lineTo(x + dashWidth, roadY + 8);
+          ctx.stroke();
+        }
+      }
+      ctx.globalAlpha = 1.0;
+
+      // 6. Suspended Atmospheric Particles
+      ctx.fillStyle = tokens.particles;
+      const particleOffsets = [
+        { x: 0.18, y: 0.32 }, { x: 0.36, y: 0.45 },
+        { x: 0.62, y: 0.22 }, { x: 0.78, y: 0.38 },
+        { x: 0.88, y: 0.52 }, { x: 0.48, y: 0.18 }
+      ];
+      particleOffsets.forEach((p, i) => {
+        const drift = Math.sin((progress * Math.PI * 2) + (i * 1.2)) * 6;
+        const px = ((p.x * w) + drift) % w;
+        const py = (p.y * h) + (idleBob * 0.4);
+        ctx.beginPath();
+        ctx.arc(px, py, 1.4 + (i % 3) * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // 7. Dynamic Trailing Speed Lines
+      if (moving) {
+        ctx.strokeStyle = tokens.speedLine;
+        ctx.lineWidth = 1.4;
+        ctx.lineCap = 'round';
+        const lines = [
+          { y: roadY - 18, len: 38, speed: 1.6, phase: 0.1 },
+          { y: roadY - 32, len: 52, speed: 2.2, phase: 0.45 },
+          { y: roadY - 48, len: 30, speed: 1.9, phase: 0.8 }
+        ];
+        lines.forEach(l => {
+          const lp = (progress * l.speed + l.phase) % 1.0;
+          const lx = (1.0 - lp) * (w + l.len * 2) - l.len;
+          if (lx > 20 && lx + l.len < w - 20) {
+            ctx.beginPath();
+            ctx.moveTo(lx, l.y);
+            ctx.lineTo(lx + l.len, l.y);
+            ctx.stroke();
+          }
+        });
+      }
+
+      // 8. Ground Contact Shadow & Ambient Light Pool under Vehicle
+      const shadowX = w * 0.48;
+      const shadowY = roadY + 2;
+
+      // Dark contact blur
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.20)';
+      ctx.beginPath();
+      ctx.ellipse(shadowX, shadowY, 68, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Ambient primary accent pool
+      ctx.fillStyle = tokens.primary + '28';
+      ctx.beginPath();
+      ctx.ellipse(shadowX, shadowY, 52, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // -------------------------------------------------------------------------
+    // VEHICLE DISPATCHER
+    // -------------------------------------------------------------------------
+    function drawVehicleByModule(ctx, modeKey, cx, cy, angle, pulse, glare) {
+      const tokens = KINEMATIC_TOKENS[modeKey] || KINEMATIC_TOKENS.car;
+      ctx.save();
+      ctx.translate(cx, cy);
+
+      // Proportional scale for compact cockpit card
+      const dpr = window.devicePixelRatio || 1;
+      const logicalH = ctx.canvas.height / dpr;
+      if (logicalH < 145) {
+        ctx.scale(0.80, 0.80);
+      }
+
+      if (modeKey === 'scooty') {
+        drawLuxuryScooty(ctx, tokens, angle, pulse, glare);
+      } else if (modeKey === 'bike') {
+        drawLuxuryBike(ctx, tokens, angle, pulse, glare);
+      } else if (modeKey === 'bus') {
+        drawLuxuryBus(ctx, tokens, angle, pulse, glare);
+      } else {
+        drawLuxuryCar(ctx, tokens, angle, pulse, glare);
+      }
+      ctx.restore();
+    }
+
+    // -------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // 1. LUXURY SCOOTY (Authentic EV Step-Through Scooter)
+    // -------------------------------------------------------------------------
+    function drawLuxuryScooty(ctx, tokens, angle, pulse, glare) {
+      // 1. Forward Headlight Projection Beam Cone
+      const beamGrad = ctx.createLinearGradient(36, -18, 120, 10);
+      beamGrad.addColorStop(0, tokens.headlightBeam);
+      beamGrad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = beamGrad;
+      ctx.beginPath();
+      ctx.moveTo(34, -20);
+      ctx.lineTo(120, -6);
+      ctx.lineTo(110, 14);
+      ctx.lineTo(32, -8);
+      ctx.closePath();
+      ctx.fill();
+
+      // 2. Front & Rear Scooty Wheels (Distinct 11.5px radius, 68px wheelbase)
+      const rearWheelX = -34;
+      const frontWheelX = 34;
+      const wheelY = 10;
+      drawAlloyStarWheel(ctx, tokens, rearWheelX, wheelY, 11.5, angle);
+      drawAlloyStarWheel(ctx, tokens, frontWheelX, wheelY, 11.5, angle);
+
+      // 3. Front Telescopic Fork & Curved Front Fender / Mudguard
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 3.0;
+      ctx.beginPath();
+      ctx.moveTo(26, -16);
+      ctx.lineTo(frontWheelX, wheelY);
+      ctx.stroke();
+
+      // Front Mudguard hugging wheel
+      ctx.strokeStyle = tokens.primary;
+      ctx.lineWidth = 3.0;
+      ctx.beginPath();
+      ctx.arc(frontWheelX, wheelY, 14.5, -Math.PI * 0.85, -Math.PI * 0.15);
+      ctx.stroke();
+
+      // 4. Rear Engine / Battery Swingarm Cowl
+      const rearCowlGrad = ctx.createLinearGradient(-38, -14, -8, 6);
+      rearCowlGrad.addColorStop(0, tokens.bodyGrad[0]);
+      rearCowlGrad.addColorStop(0.5, tokens.bodyGrad[1]);
+      rearCowlGrad.addColorStop(1, tokens.bodyGrad[2]);
+      ctx.fillStyle = rearCowlGrad;
+      ctx.beginPath();
+      ctx.moveTo(-38, 2);
+      ctx.bezierCurveTo(-42, -6, -36, -14, -22, -15);
+      ctx.lineTo(-10, -14);
+      ctx.lineTo(-8, 0);
+      ctx.lineTo(-24, 4);
+      ctx.bezierCurveTo(-32, 6, -36, 4, -38, 2);
+      ctx.closePath();
+      ctx.fill();
+
+      // Rear Cowl Specular Highlight
+      ctx.strokeStyle = tokens.highlight;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(-36, -6);
+      ctx.bezierCurveTo(-34, -12, -26, -13, -12, -13);
+      ctx.stroke();
+
+      // 5. Open Step-Through Floorboard (The defining Scooty signature)
+      const floorGrad = ctx.createLinearGradient(-10, 0, 18, 4);
+      floorGrad.addColorStop(0, '#1E293B');
+      floorGrad.addColorStop(1, '#0F172A');
+      ctx.fillStyle = floorGrad;
+      ctx.beginPath();
+      ctx.roundRect(-10, 0, 26, 4.5, [1, 1, 2, 2]);
+      ctx.fill();
+
+      // 6. Angled Front Apron / Leg Shield
+      const apronGrad = ctx.createLinearGradient(12, 0, 32, -26);
+      apronGrad.addColorStop(0, tokens.bodyGrad[1]);
+      apronGrad.addColorStop(1, tokens.bodyGrad[0]);
+      ctx.fillStyle = apronGrad;
+      ctx.beginPath();
+      ctx.moveTo(12, 1);
+      ctx.lineTo(26, -22);
+      ctx.lineTo(32, -20);
+      ctx.lineTo(22, 1);
+      ctx.closePath();
+      ctx.fill();
+
+      // Apron Crease Highlight
+      ctx.strokeStyle = tokens.highlight;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(15, 0);
+      ctx.lineTo(28, -21);
+      ctx.stroke();
+
+      // 7. Handlebar Stem, Grips & Dual Rearview Mirrors
+      ctx.strokeStyle = '#1E293B';
+      ctx.lineWidth = 3.0;
+      ctx.beginPath();
+      ctx.moveTo(26, -22);
+      ctx.lineTo(24, -28);
+      ctx.stroke();
+
+      // Handlebar crossbar
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.moveTo(20, -28);
+      ctx.lineTo(27, -27);
+      ctx.stroke();
+
+      // Rearview Mirrors
+      ctx.strokeStyle = '#64748B';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(22, -28);
+      ctx.lineTo(20, -34);
+      ctx.moveTo(26, -27);
+      ctx.lineTo(28, -33);
+      ctx.stroke();
+      ctx.fillStyle = '#1E293B';
+      ctx.beginPath();
+      ctx.arc(20, -34, 2.0, 0, Math.PI * 2);
+      ctx.arc(28, -33, 2.0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Aerodynamic Windscreen with Glare Sweep
+      const screenGrad = ctx.createLinearGradient(24, -28, 28, -37);
+      screenGrad.addColorStop(0, tokens.glass[0]);
+      screenGrad.addColorStop(1, tokens.glass[1]);
+      ctx.fillStyle = screenGrad;
+      ctx.beginPath();
+      ctx.moveTo(25, -27);
+      ctx.lineTo(28, -37);
+      ctx.lineTo(31, -36);
+      ctx.lineTo(28, -26);
+      ctx.closePath();
+      ctx.fill();
+
+      const screenGlareY = -37 + (glare * 10);
+      ctx.strokeStyle = tokens.glare;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(26, screenGlareY);
+      ctx.lineTo(29, screenGlareY - 1.5);
+      ctx.stroke();
+
+      // 8. Contoured Dual-Tone Scooty Saddle / Seat
+      const seatGrad = ctx.createLinearGradient(-38, -20, -8, -12);
+      seatGrad.addColorStop(0, '#334155');
+      seatGrad.addColorStop(1, '#0F172A');
+      ctx.fillStyle = seatGrad;
+      ctx.beginPath();
+      ctx.moveTo(-38, -14);
+      ctx.bezierCurveTo(-34, -20, -20, -20, -8, -15);
+      ctx.lineTo(-9, -11);
+      ctx.lineTo(-36, -11);
+      ctx.closePath();
+      ctx.fill();
+
+      // Seat Grab Rail
+      ctx.strokeStyle = '#94A3B8';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(-38, -13);
+      ctx.lineTo(-42, -15);
+      ctx.lineTo(-36, -16);
+      ctx.stroke();
+
+      // 9. Upright Scooty Rider (Feet on floorboard, hands on handlebar)
+      // Legs: Thigh horizontal, calf vertical down to floorboard!
+      ctx.strokeStyle = '#1E293B';
+      ctx.lineWidth = 3.8;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-16, -14); // hip
+      ctx.lineTo(2, -13);   // knee forward
+      ctx.lineTo(4, 0);     // foot resting flat on floorboard!
+      ctx.stroke();
+
+      // Rider Torso (Upright spine)
+      ctx.fillStyle = '#334155';
+      ctx.beginPath();
+      ctx.moveTo(-18, -14);
+      ctx.lineTo(-8, -38);
+      ctx.lineTo(6, -35);
+      ctx.lineTo(0, -13);
+      ctx.closePath();
+      ctx.fill();
+
+      // Rider Arms holding handlebar
+      ctx.strokeStyle = '#1E293B';
+      ctx.lineWidth = 3.6;
+      ctx.beginPath();
+      ctx.moveTo(-4, -32);
+      ctx.lineTo(22, -26);
+      ctx.stroke();
+
+      // Rider Helmet
+      const helmetGrad = ctx.createRadialGradient(-3, -46, 2, -3, -46, 8.5);
+      helmetGrad.addColorStop(0, tokens.bodyGrad[0]);
+      helmetGrad.addColorStop(1, tokens.bodyGrad[1]);
+      ctx.fillStyle = helmetGrad;
+      ctx.beginPath();
+      ctx.arc(-3, -46, 8.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Helmet Visor
+      ctx.fillStyle = '#0F172A';
+      ctx.beginPath();
+      ctx.roundRect(-1, -49, 7, 6, 2);
+      ctx.fill();
+
+      // Fluttering Mint Scarf
+      const scarfWave = Math.sin(angle * 2.2) * 3.5;
+      ctx.fillStyle = tokens.primary;
+      ctx.beginPath();
+      ctx.moveTo(-8, -40);
+      ctx.quadraticCurveTo(-18, -39 + scarfWave, -32, -35 - scarfWave);
+      ctx.quadraticCurveTo(-19, -33 + scarfWave, -6, -37);
+      ctx.closePath();
+      ctx.fill();
+
+      // 10. Front V-Shaped LED Headlight & Rear LED Taillight
+      ctx.fillStyle = tokens.primary;
+      ctx.shadowColor = tokens.primary;
+      ctx.shadowBlur = 9;
+      ctx.beginPath();
+      ctx.arc(31, -21, 3.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Rear pulsing LED taillight
+      ctx.fillStyle = tokens.taillight;
+      ctx.shadowColor = tokens.taillight;
+      ctx.shadowBlur = 7;
+      ctx.globalAlpha = 0.4 + 0.6 * pulse;
+      ctx.beginPath();
+      ctx.roundRect(-42, -14, 4.5, 3.5, 1.5);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1.0;
+    }
+
+    // -------------------------------------------------------------------------
+    // 2. LUXURY CAR (Aerodynamic Emerald Coupe)
+    // -------------------------------------------------------------------------
+    function drawLuxuryCar(ctx, tokens, angle, pulse, glare) {
+      // Forward Projector Beam Cone
+      const beamGrad = ctx.createLinearGradient(56, -2, 142, 20);
+      beamGrad.addColorStop(0, tokens.headlightBeam);
+      beamGrad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = beamGrad;
+      ctx.beginPath();
+      ctx.moveTo(64, -2);
+      ctx.lineTo(142, 4);
+      ctx.lineTo(130, 20);
+      ctx.lineTo(56, 10);
+      ctx.closePath();
+      ctx.fill();
+
+      // Underbody diffuser & rocker
+      ctx.fillStyle = tokens.underside;
+      ctx.beginPath();
+      ctx.moveTo(-58, 6);
+      ctx.lineTo(58, 6);
+      ctx.lineTo(52, 12);
+      ctx.lineTo(-52, 12);
+      ctx.closePath();
+      ctx.fill();
+
+      // Coupe Silhouette Body
+      const bodyGrad = ctx.createLinearGradient(0, -11, 0, 12);
+      bodyGrad.addColorStop(0, tokens.bodyGrad[0]);
+      bodyGrad.addColorStop(0.5, tokens.bodyGrad[1]);
+      bodyGrad.addColorStop(1, tokens.bodyGrad[2]);
+      ctx.fillStyle = bodyGrad;
+      ctx.beginPath();
+      ctx.moveTo(-64, 4);
+      ctx.bezierCurveTo(-64, -2, -62, -8, -50, -10);
+      ctx.lineTo(-26, -11);
+      ctx.lineTo(28, -11);
+      ctx.bezierCurveTo(46, -11, 56, -4, 62, 1);
+      ctx.lineTo(64, 5);
+      ctx.lineTo(58, 10);
+      // Front wheel arch
+      ctx.arc(46, 11, 15, Math.PI, 0, true);
+      ctx.lineTo(-32, 10);
+      // Rear wheel arch
+      ctx.arc(-46, 11, 15, Math.PI, 0, true);
+      ctx.closePath();
+      ctx.fill();
+
+      // Specular Shoulder Crease Highlight
+      ctx.strokeStyle = tokens.highlight;
+      ctx.lineWidth = 2.0;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-58, -7);
+      ctx.bezierCurveTo(-26, -9, 20, -9, 58, -1);
+      ctx.stroke();
+
+      // Lower rocker styling accent
+      ctx.strokeStyle = tokens.secondary + '80';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(-32, 8);
+      ctx.lineTo(32, 8);
+      ctx.stroke();
+
+      // Panoramic Glasshouse Dome
+      const glassGrad = ctx.createLinearGradient(-26, -30, 34, -11);
+      glassGrad.addColorStop(0, tokens.glass[0]);
+      glassGrad.addColorStop(1, tokens.glass[1]);
+      ctx.fillStyle = glassGrad;
+      ctx.beginPath();
+      ctx.moveTo(-26, -11);
+      ctx.bezierCurveTo(-20, -28, -6, -30, 8, -30);
+      ctx.bezierCurveTo(18, -30, 26, -24, 34, -11);
+      ctx.closePath();
+      ctx.fill();
+
+      // B-Pillar
+      ctx.strokeStyle = '#0F172A';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.moveTo(5, -30);
+      ctx.lineTo(7, -11);
+      ctx.stroke();
+
+      // Glare Reflection Sweep across glass
+      const glareOffset = -26 + (glare * 60);
+      const glareGrad = ctx.createLinearGradient(glareOffset - 8, -30, glareOffset + 8, -11);
+      glareGrad.addColorStop(0, 'rgba(255,255,255,0)');
+      glareGrad.addColorStop(0.5, tokens.glare);
+      glareGrad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.strokeStyle = glareGrad;
+      ctx.lineWidth = 3.0;
+      ctx.beginPath();
+      ctx.moveTo(glareOffset - 4, -28);
+      ctx.lineTo(glareOffset + 6, -12);
+      ctx.stroke();
+
+      // Aero side mirror
+      ctx.fillStyle = '#1E293B';
+      ctx.beginPath();
+      ctx.moveTo(24, -13);
+      ctx.lineTo(30, -14);
+      ctx.bezierCurveTo(32, -14, 32, -10, 28, -10);
+      ctx.closePath();
+      ctx.fill();
+
+      // 6-Spoke Turbine Alloy Wheels
+      drawTurbineWheel(ctx, tokens, -46, 11, 13.5, angle);
+      drawTurbineWheel(ctx, tokens, 46, 11, 13.5, angle);
+
+      // Projector Headlight & Full-Width Taillight Strip
+      ctx.fillStyle = tokens.primary;
+      ctx.shadowColor = tokens.primary;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(61, 2, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      ctx.fillStyle = tokens.taillight;
+      ctx.shadowColor = tokens.taillight;
+      ctx.shadowBlur = 8;
+      ctx.globalAlpha = 0.35 + 0.65 * pulse;
+      ctx.beginPath();
+      ctx.roundRect(-65, -3, 6, 3.5, 1.5);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1.0;
+    }
+
+    // -------------------------------------------------------------------------
+    // 3. LUXURY BIKE (Sunset Amber Sport Motorcycle)
+    // -------------------------------------------------------------------------
+    function drawLuxuryBike(ctx, tokens, angle, pulse, glare) {
+      // Dual Beam Headlight Cone
+      const beamGrad = ctx.createLinearGradient(48, -8, 132, 18);
+      beamGrad.addColorStop(0, tokens.headlightBeam);
+      beamGrad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = beamGrad;
+      ctx.beginPath();
+      ctx.moveTo(52, -8);
+      ctx.lineTo(132, -2);
+      ctx.lineTo(122, 18);
+      ctx.lineTo(48, 6);
+      ctx.closePath();
+      ctx.fill();
+
+      // Swingarm & Chrome Exhaust Canister
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 4.5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-44, 11);
+      ctx.lineTo(-12, 6);
+      ctx.stroke();
+
+      const exhaustGrad = ctx.createLinearGradient(-42, -4, -10, 8);
+      exhaustGrad.addColorStop(0, '#E2E8F0');
+      exhaustGrad.addColorStop(0.5, '#94A3B8');
+      exhaustGrad.addColorStop(1, '#475569');
+      ctx.fillStyle = exhaustGrad;
+      ctx.beginPath();
+      ctx.moveTo(-8, 8);
+      ctx.lineTo(-32, 6);
+      ctx.lineTo(-42, 0);
+      ctx.lineTo(-40, -4);
+      ctx.lineTo(-10, 4);
+      ctx.closePath();
+      ctx.fill();
+
+      // Exhaust tip opening
+      ctx.fillStyle = '#1E293B';
+      ctx.beginPath();
+      ctx.ellipse(-41, -2, 2, 3.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Exposed Engine Block with Cooling Fins
+      const engineGrad = ctx.createLinearGradient(-10, -4, 18, 14);
+      engineGrad.addColorStop(0, '#334155');
+      engineGrad.addColorStop(1, '#0F172A');
+      ctx.fillStyle = engineGrad;
+      ctx.beginPath();
+      ctx.roundRect(-10, -4, 28, 18, 4);
+      ctx.fill();
+
+      ctx.strokeStyle = '#64748B';
+      ctx.lineWidth = 1.2;
+      for (let y = 0; y <= 10; y += 3) {
+        ctx.beginPath();
+        ctx.moveTo(-6, y);
+        ctx.lineTo(14, y);
+        ctx.stroke();
+      }
+
+      // Inverted Gold Suspension Forks
+      const forkGrad = ctx.createLinearGradient(30, -18, 46, 11);
+      forkGrad.addColorStop(0, '#FFD54F');
+      forkGrad.addColorStop(0.5, '#FFB300');
+      forkGrad.addColorStop(1, '#FFA000');
+      ctx.strokeStyle = forkGrad;
+      ctx.lineWidth = 3.2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(34, -18);
+      ctx.lineTo(46, 11);
+      ctx.stroke();
+
+      // Muscular Sculpted Fuel Tank & Tail Fairing
+      const tankGrad = ctx.createLinearGradient(0, -24, 0, 0);
+      tankGrad.addColorStop(0, tokens.bodyGrad[0]);
+      tankGrad.addColorStop(0.5, tokens.bodyGrad[1]);
+      tankGrad.addColorStop(1, tokens.bodyGrad[2]);
+      ctx.fillStyle = tankGrad;
+      ctx.beginPath();
+      ctx.moveTo(-44, -12);
+      ctx.lineTo(-26, -10);
+      ctx.bezierCurveTo(-14, -10, -8, -24, 12, -24);
+      ctx.bezierCurveTo(26, -24, 38, -18, 44, -10);
+      ctx.lineTo(32, 0);
+      ctx.lineTo(12, -4);
+      ctx.lineTo(-18, -4);
+      ctx.lineTo(-36, -8);
+      ctx.closePath();
+      ctx.fill();
+
+      // Highlight crest
+      ctx.strokeStyle = tokens.highlight;
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.moveTo(-8, -22);
+      ctx.quadraticCurveTo(8, -24, 24, -19);
+      ctx.stroke();
+
+      // Saddle
+      ctx.fillStyle = '#1E293B';
+      ctx.beginPath();
+      ctx.moveTo(-26, -10);
+      ctx.lineTo(-10, -10);
+      ctx.lineTo(-12, -5);
+      ctx.lineTo(-24, -5);
+      ctx.closePath();
+      ctx.fill();
+
+      // Tucked Racing Rider
+      ctx.fillStyle = '#1E293B';
+      ctx.beginPath();
+      ctx.moveTo(-20, -10);
+      ctx.lineTo(2, -34);
+      ctx.lineTo(20, -28);
+      ctx.lineTo(6, -8);
+      ctx.closePath();
+      ctx.fill();
+
+      // Arm
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 3.8;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(12, -28);
+      ctx.lineTo(36, -16);
+      ctx.stroke();
+
+      // Helmet
+      const helmetGrad = ctx.createRadialGradient(16, -40, 2, 16, -40, 8.5);
+      helmetGrad.addColorStop(0, tokens.bodyGrad[0]);
+      helmetGrad.addColorStop(1, tokens.bodyGrad[1]);
+      ctx.fillStyle = helmetGrad;
+      ctx.beginPath();
+      ctx.arc(16, -40, 8.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Visor with Glare Flash
+      ctx.fillStyle = '#0F172A';
+      ctx.beginPath();
+      ctx.roundRect(17, -43, 6.5, 6, 2);
+      ctx.fill();
+
+      const glareY = -43 + (glare * 6);
+      ctx.strokeStyle = tokens.glare;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(18, glareY);
+      ctx.lineTo(22, glareY - 1);
+      ctx.stroke();
+
+      // Lightweight Y-Spoke Wheels
+      drawYSpokeWheel(ctx, tokens, -44, 11, 13.5, angle);
+      drawYSpokeWheel(ctx, tokens, 46, 11, 13.5, angle);
+
+      // Lights
+      ctx.fillStyle = tokens.primary;
+      ctx.shadowColor = tokens.primary;
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(46, -9, 3.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      ctx.fillStyle = tokens.taillight;
+      ctx.shadowColor = tokens.taillight;
+      ctx.shadowBlur = 6;
+      ctx.globalAlpha = 0.35 + 0.65 * pulse;
+      ctx.beginPath();
+      ctx.arc(-45, -12, 3.0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1.0;
+    }
+
+    // -------------------------------------------------------------------------
+    // 4. LUXURY BUS (Electric Aerodynamic Transit)
+    // -------------------------------------------------------------------------
+    function drawLuxuryBus(ctx, tokens, angle, pulse, glare) {
+      // Broad Headlight Flood Cone
+      const beamGrad = ctx.createLinearGradient(68, -4, 148, 22);
+      beamGrad.addColorStop(0, tokens.headlightBeam);
+      beamGrad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = beamGrad;
+      ctx.beginPath();
+      ctx.moveTo(74, -4);
+      ctx.lineTo(148, 6);
+      ctx.lineTo(136, 22);
+      ctx.lineTo(68, 12);
+      ctx.closePath();
+      ctx.fill();
+
+      // Dark underbody skirt
+      ctx.fillStyle = tokens.underside;
+      ctx.beginPath();
+      ctx.moveTo(-74, 8);
+      ctx.lineTo(74, 8);
+      ctx.lineTo(68, 13);
+      ctx.lineTo(-68, 13);
+      ctx.closePath();
+      ctx.fill();
+
+      // Streamlined Monocoque Bus Body
+      const busGrad = ctx.createLinearGradient(0, -30, 0, 8);
+      busGrad.addColorStop(0, tokens.bodyGrad[0]);
+      busGrad.addColorStop(0.5, tokens.bodyGrad[1]);
+      busGrad.addColorStop(1, tokens.bodyGrad[2]);
+      ctx.fillStyle = busGrad;
+      ctx.beginPath();
+      ctx.roundRect(-74, -30, 148, 38, [8, 14, 6, 4]);
+      ctx.fill();
+
+      // Roof Battery/HVAC Pod
+      ctx.fillStyle = tokens.secondary + 'E6';
+      ctx.beginPath();
+      ctx.roundRect(-32, -35, 64, 6, [4, 4, 0, 0]);
+      ctx.fill();
+
+      // Specular roofline edge
+      ctx.strokeStyle = tokens.highlight;
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(-70, -29);
+      ctx.lineTo(70, -29);
+      ctx.stroke();
+
+      // Passenger Door Seams
+      ctx.strokeStyle = tokens.underside + '80';
+      ctx.lineWidth = 1.0;
+      ctx.beginPath();
+      ctx.moveTo(22, -18); ctx.lineTo(22, 8);
+      ctx.moveTo(36, -18); ctx.lineTo(36, 8);
+      ctx.stroke();
+
+      // Continuous Panoramic Glass Ribbon
+      const glassGrad = ctx.createLinearGradient(-68, -25, 68, -11);
+      glassGrad.addColorStop(0, tokens.glass[0]);
+      glassGrad.addColorStop(1, tokens.glass[1]);
+      ctx.fillStyle = glassGrad;
+      ctx.beginPath();
+      ctx.roundRect(-68, -25, 136, 14, [4, 8, 2, 2]);
+      ctx.fill();
+
+      // Architectural Pillars
+      ctx.strokeStyle = '#0F172A';
+      ctx.lineWidth = 1.5;
+      for (let x = -44; x <= 46; x += 22) {
+        ctx.beginPath();
+        ctx.moveTo(x, -25);
+        ctx.lineTo(x, -11);
+        ctx.stroke();
+      }
+
+      // Glare Sweep across the continuous window ribbon
+      const glareX = -68 + (glare * 136);
+      const glareGrad = ctx.createLinearGradient(glareX - 12, -25, glareX + 12, -11);
+      glareGrad.addColorStop(0, 'rgba(255,255,255,0)');
+      glareGrad.addColorStop(0.5, tokens.glare);
+      glareGrad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.strokeStyle = glareGrad;
+      ctx.lineWidth = 3.0;
+      ctx.beginPath();
+      ctx.moveTo(glareX - 6, -24);
+      ctx.lineTo(glareX + 6, -12);
+      ctx.stroke();
+
+      // Glowing LED Route Destination Board
+      ctx.fillStyle = '#0F172A';
+      ctx.beginPath();
+      ctx.roundRect(42, -29, 26, 4.5, 1.5);
+      ctx.fill();
+
+      ctx.fillStyle = '#64FFDA';
+      ctx.font = '900 3.2px sans-serif';
+      ctx.fillText('ECO-EXPRESS', 43.5, -25.5);
+
+      // Commercial Heavy-Duty Wheels
+      drawCommercialWheel(ctx, tokens, -52, 11, 14, angle);
+      drawCommercialWheel(ctx, tokens, 50, 11, 14, angle);
+
+      // Dual Stacked Headlights & Vertical LED Taillights
+      ctx.fillStyle = tokens.primary;
+      ctx.shadowColor = tokens.primary;
+      ctx.shadowBlur = 9;
+      ctx.beginPath();
+      ctx.arc(72, -1, 2.8, 0, Math.PI * 2);
+      ctx.arc(72, 4, 2.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      ctx.fillStyle = tokens.taillight;
+      ctx.shadowColor = tokens.taillight;
+      ctx.shadowBlur = 7;
+      ctx.globalAlpha = 0.35 + 0.65 * pulse;
+      ctx.beginPath();
+      ctx.roundRect(-75, -6, 3, 10, 1.2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1.0;
+    }
+
+    // -------------------------------------------------------------------------
+    // WHEEL RENDERERS (High Detail & Specular Highlights)
+    // -------------------------------------------------------------------------
+    function drawAlloyStarWheel(ctx, tokens, x, y, radius, angle) {
+      ctx.save();
+      ctx.translate(x, y);
+
+      // Outer Tire
+      ctx.strokeStyle = '#1E293B';
+      ctx.lineWidth = 4.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Rim
+      ctx.strokeStyle = '#CBD5E1';
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius - 3.2, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 5-Spoke Star Design
+      ctx.rotate(angle);
+      ctx.strokeStyle = '#E2E8F0';
+      ctx.lineWidth = 1.6;
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 5; i++) {
+        const rad = (i * 2 * Math.PI) / 5;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(rad) * (radius - 4), Math.sin(rad) * (radius - 4));
+        ctx.stroke();
+      }
+
+      // Hub Cap
+      ctx.fillStyle = tokens.primary;
+      ctx.beginPath();
+      ctx.arc(0, 0, 3.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    function drawTurbineWheel(ctx, tokens, x, y, radius, angle) {
+      ctx.save();
+      ctx.translate(x, y);
+
+      // Tire
+      ctx.strokeStyle = '#0F172A';
+      ctx.lineWidth = 4.2;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Rotor Disc & Caliper
+      ctx.fillStyle = '#64748B';
+      ctx.beginPath();
+      ctx.arc(0, 0, radius - 3.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = tokens.primary;
+      ctx.beginPath();
+      ctx.roundRect(-3, -radius + 2, 6, 4, 1.5);
+      ctx.fill();
+
+      // Alloy Rim
+      ctx.strokeStyle = '#CBD5E1';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius - 2.5, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Rotating 6 Turbine Blades
+      ctx.rotate(angle);
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 2.0;
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 6; i++) {
+        const rad = (i * 2 * Math.PI) / 6;
+        const x1 = Math.cos(rad) * 2.5;
+        const y1 = Math.sin(rad) * 2.5;
+        const x2 = Math.cos(rad + 0.35) * (radius - 3.5);
+        const y2 = Math.sin(rad + 0.35) * (radius - 3.5);
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+
+      // Hub Cap
+      ctx.fillStyle = tokens.primary;
+      ctx.beginPath();
+      ctx.arc(0, 0, 3.0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    function drawYSpokeWheel(ctx, tokens, x, y, radius, angle) {
+      ctx.save();
+      ctx.translate(x, y);
+
+      // High Performance Tire
+      ctx.strokeStyle = '#0F172A';
+      ctx.lineWidth = 4.2;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Drilled Rotor
+      ctx.strokeStyle = '#94A3B8';
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius - 4.5, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Rotating Y-Spokes
+      ctx.rotate(angle);
+      ctx.strokeStyle = '#CBD5E1';
+      ctx.lineWidth = 1.6;
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 3; i++) {
+        const rad = (i * 2 * Math.PI) / 3;
+        const sx = Math.cos(rad) * (radius - 4);
+        const sy = Math.sin(rad) * (radius - 4);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(sx, sy);
+        ctx.stroke();
+
+        const xBranch = Math.cos(rad + 0.2) * (radius - 3.2);
+        const yBranch = Math.sin(rad + 0.2) * (radius - 3.2);
+        ctx.beginPath();
+        ctx.moveTo(sx * 0.5, sy * 0.5);
+        ctx.lineTo(xBranch, yBranch);
+        ctx.stroke();
+      }
+
+      // Hub
+      ctx.fillStyle = tokens.primary;
+      ctx.beginPath();
+      ctx.arc(0, 0, 2.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    function drawCommercialWheel(ctx, tokens, x, y, radius, angle) {
+      ctx.save();
+      ctx.translate(x, y);
+
+      // Heavy Commercial Tire
+      ctx.strokeStyle = '#0F172A';
+      ctx.lineWidth = 4.8;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Steel Rim
+      ctx.strokeStyle = '#94A3B8';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius - 3.0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Rotating Lug Nuts
+      ctx.rotate(angle);
+      ctx.fillStyle = '#334155';
+      for (let i = 0; i < 6; i++) {
+        const rad = (i * 2 * Math.PI) / 6;
+        const lx = Math.cos(rad) * (radius - 5.5);
+        const ly = Math.sin(rad) * (radius - 5.5);
+        ctx.beginPath();
+        ctx.arc(lx, ly, 1.0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Heavy Hub
+      ctx.fillStyle = tokens.primary;
+      ctx.beginPath();
+      ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    // Initialize Engine with active mode
+    updateKinematicCardTheme(activeVehicle.animType || 'car');
+    renderDynamicAnimation();
+    startContinuousBackgroundService();
+    startLoadingSequence();
+  </script>
+<script>
+(() => {
+  // WCAG Relative Luminance
+  function sRGBtoLin(colorChannel) {
+    colorChannel = colorChannel / 255;
+    return colorChannel <= 0.03928 ? colorChannel / 12.92 : Math.pow((colorChannel + 0.055) / 1.055, 2.4);
+  }
+  function getLuminance(r, g, b) {
+    return 0.2126 * sRGBtoLin(r) + 0.7152 * sRGBtoLin(g) + 0.0722 * sRGBtoLin(b);
+  }
+  function parseColor(str) {
+    if (!str) return null;
+    const m = str.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (m) return [parseInt(m[1]), parseInt(m[2]), parseInt(m[3])];
+    return null;
+  }
+  function getContrast(fgStr, bgStr) {
+    const fg = parseColor(fgStr);
+    const bg = parseColor(bgStr);
+    if (!fg || !bg) return null;
+    const L1 = getLuminance(fg[0], fg[1], fg[2]);
+    const L2 = getLuminance(bg[0], bg[1], bg[2]);
+    const brighter = Math.max(L1, L2);
+    const darker = Math.min(L1, L2);
+    return (brighter + 0.05) / (darker + 0.05);
+  }
+
+  function getEffectiveBg(el) {
+    let cur = el;
+    while (cur && cur !== document.body) {
+      const bg = window.getComputedStyle(cur).backgroundColor;
+      if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
+        const m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+        if (m && (!m[4] || parseFloat(m[4]) > 0.5)) {
+          return bg;
+        }
+      }
+      cur = cur.parentElement;
+    }
+    return 'rgb(245, 249, 246)'; // Body bg #F5F9F6
+  }
+
+  const results = {
+    touchTargets: [],
+    contrastIssues: [],
+    missingAriaLabels: [],
+    headingHierarchy: [],
+    reducedMotionSupport: false
+  };
+
+  // 1. Touch targets for all interactive elements
+  const interactives = document.querySelectorAll('button, a, input, select, textarea, [onclick], [role="button"]');
+  interactives.forEach(el => {
+    // Only visible elements in dashboard
+    if (el.closest('#loginScreen') || el.closest('#loadingScreen') || el.closest('#reportModal') || el.closest('#ipccLedgerModal')) return;
+    const rect = el.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
+    const accessibleName = el.getAttribute('aria-label') || el.getAttribute('title') || el.innerText.trim() || el.id || el.tagName;
+    const isUnder44 = rect.width < 44 || rect.height < 44;
+    results.touchTargets.push({
+      element: el.tagName + (el.id ? '#' + el.id : '') + (el.className ? '.' + el.className.split(' ')[0] : ''),
+      name: accessibleName.substring(0, 30),
+      width: Math.round(rect.width),
+      height: Math.round(rect.height),
+      isUnder44: isUnder44
+    });
+
+    // Check accessible name
+    if (!el.getAttribute('aria-label') && !el.getAttribute('title') && (!el.innerText || el.innerText.trim().length === 0)) {
+      results.missingAriaLabels.push({
+        element: el.tagName + (el.id ? '#' + el.id : '') + (el.className ? '.' + el.className.split(' ')[0] : ''),
+        html: el.outerHTML.substring(0, 80)
+      });
+    }
+  });
+
+  // 2. Contrast evaluation on key dashboard text
+  const textNodes = [];
+  const walk = document.createTreeWalker(document.getElementById('mainDashboard') || document.querySelector('.app-root'), NodeFilter.SHOW_TEXT, null, false);
+  let n;
+  while(n = walk.nextNode()) {
+    if (n.textContent.trim().length > 0 && n.parentElement) {
+      const parent = n.parentElement;
+      if (parent.closest('#loginScreen') || parent.closest('#loadingScreen')) continue;
+      const style = window.getComputedStyle(parent);
+      if (style.display === 'none' || style.visibility === 'hidden') continue;
+      const fg = style.color;
+      const bg = getEffectiveBg(parent);
+      const ratio = getContrast(fg, bg);
+      const fontSize = parseFloat(style.fontSize);
+      const isBold = parseInt(style.fontWeight) >= 700 || style.fontWeight === 'bold';
+      const isLarge = fontSize >= 24 || (fontSize >= 18.5 && isBold);
+      const reqRatio = isLarge ? 3.0 : 4.5;
+
+      if (ratio && ratio < reqRatio) {
+        results.contrastIssues.push({
+          text: n.textContent.trim().substring(0, 35),
+          fg: fg,
+          bg: bg,
+          ratio: Math.round(ratio * 100) / 100,
+          required: reqRatio,
+          fontSize: Math.round(fontSize) + 'px',
+          fontWeight: style.fontWeight
+        });
+      }
+    }
+  }
+
+  // 3. Heading hierarchy
+  const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+  headings.forEach(h => {
+    if (h.closest('#loginScreen') || h.closest('#loadingScreen')) return;
+    results.headingHierarchy.push({
+      tag: h.tagName,
+      text: h.innerText.trim(),
+      id: h.id
+    });
+  });
+
+  // 4. Reduced motion query check in stylesheet
+  let hasReducedMotion = false;
+  for (let sheet of document.styleSheets) {
+    try {
+      for (let rule of sheet.cssRules) {
+        if (rule.media && rule.media.mediaText.includes('prefers-reduced-motion')) {
+          hasReducedMotion = true;
+        }
+      }
+    } catch(e) {}
+  }
+  results.reducedMotionSupport = hasReducedMotion;
+
+  const div = document.createElement('div');
+  div.id = 'auditResultContainer';
+  div.style.display = 'none';
+  div.textContent = JSON.stringify(results);
+  document.body.appendChild(div);
+})();
+</script></body>
+</html>
